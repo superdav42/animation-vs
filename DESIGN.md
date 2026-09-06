@@ -1,35 +1,44 @@
-# Henry's Wild Run — Design System
+# Animation VS — Design System
 
 ## Product direction
 
-Henry's Wild Run is a friendly top-down survival game where scrappy machinery meets living magic. Sessions should be understandable immediately, last one minute, and always advance the player's collection.
+Animation VS is a friendly top-down stick-figure duel where player choices create a fair but unpredictable CPU rival. Sessions last one minute, provide visible progression, and encourage experimentation with optional equipment and earned cosmetics.
+
+## Match contract
+
+- Weapons are mandatory and establish the CPU weapon tier.
+- New profiles receive one random Rough-tier starter weapon rather than a fixed weapon.
+- CPU weapons are randomly drawn from a separate pool and can never be the player's weapon.
+- Vehicles and abilities are optional. Each occupied player slot produces a different CPU counterpart at the same tier; each empty player slot forces the matching CPU slot to remain empty.
+- A knockout ends the match immediately. Timeout compares remaining-health percentages so vehicle armour does not create an unfair tiebreaker.
 
 ## Visual language
 
 - **Atmosphere:** moonlit techno-forest with deep navy surfaces, luminous mint vegetation, and warm cream typography.
-- **Palette:** `#07121e` night, `#43d9bd` mint, `#f5f0d7` cream, `#ffd56b` parts, `#ef5d75` danger.
-- **Shapes:** rounded panels and controls contrast with angular creatures, vehicles, projectiles, and mountain silhouettes.
-- **Typography:** large condensed-feeling uppercase labels using Godot's system font; supporting copy stays short and high contrast.
-- **Motion:** drifting spores, pulsing terrain, growing vines, expanding ability rings, projectile trails, and vehicle boost effects provide feedback without imported animation assets.
+- **Sides:** the player uses mint and cream; the CPU uses magenta, violet, and red. These side colours remain consistent across health bars, vehicles, projectiles, vines, and effects.
+- **Palette:** `#07121e` night, `#43d9bd` player mint, `#f5f0d7` cream, `#e969a0` CPU magenta, `#ffd56b` parts.
+- **Fighters:** both sides are unmistakable animated stick figures. Moving limbs communicate travel; skins change head silhouettes and details without weakening the readable line-body form.
+- **Shapes:** rounded panels and controls contrast with angular vehicles, projectiles, and mountain silhouettes.
+- **Motion:** drifting spores, pulsing terrain, growing vines, expanding ability rings, projectile trails, strafing CPU movement, and vehicle effects provide feedback without imported animation assets.
 
-All visuals are generated through `_draw()` methods or Godot primitives. Future art should preserve the same silhouette-first approach and must include clear licence provenance.
+All visuals are generated through `_draw()` methods or Godot primitives. Future art should preserve the silhouette-first approach and include clear licence provenance.
 
-## Navigation
+## Navigation and loadouts
 
-The home screen uses one dominant Play action followed by Garage, Control Mode, Loadout, and How to Play. Parts and best score remain visible at the bottom. Every secondary page has an obvious Home action and avoids modal navigation.
+The home screen uses one dominant Play action followed by Garage, Control Mode, Loadout, Customize Fighter, and How to Play. Parts and best score remain visible at the bottom. The loadout page presents explicit **On Foot** and **No Ability** choices before unlocked equipment, while never offering an empty weapon slot.
 
-## Progression
+Gear is grouped into Rough, Good, Great, and Legendary tiers. Tier colour communicates value, while every item also has a text tier so progression never depends on colour alone.
 
-Gear is grouped into Rough, Good, Great, and Legendary tiers. Tier colour communicates value, while each item also has a text tier so progression never depends on colour alone. A player equips exactly one vehicle, weapon, and ability.
+Skins are purchased in the Garage exclusively with earned parts. Customize Fighter separates owned-skin selection from free line-colour and face-design controls. CPU appearance always differs in silhouette and face design so the two stick figures remain easy to distinguish.
 
 ## Input principles
 
 - Desktop and mobile are explicit player-selected modes.
 - Mobile targets are at least 60 virtual pixels high.
-- The same three verbs exist in both modes: attack, power, and boost.
+- Attack is always available; Power and Boost communicate when their optional slots are empty.
 - Targeted powers use a short instruction at the top of the arena.
 - Vine Weaver connects two chosen world points and snaps its origin to nearby branches, making background terrain mechanically meaningful.
 
 ## Gameplay readability
 
-The arena reserves its top strip for score, time, wave, health, and equipment status. Enemies use warm colours, Henry and terrain use cool colours, and rewards use yellow. Hit points appear directly above enemies. Procedural effects fade quickly to avoid obscuring movement.
+The arena header mirrors **YOU** and **CPU**, with separate colour-coded health bars, weapon names, and a central timer. The CPU's complete randomized draw appears briefly as the round begins. Match results report victory, defeat, draw, or forfeit along with damage, score, opposing weapon, and parts earned.

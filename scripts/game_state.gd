@@ -2,25 +2,30 @@ extends Node
 
 signal changed
 
-const SAVE_PATH := "user://henrys_game_progress.cfg"
-const CATEGORIES := ["vehicles", "weapons", "abilities"]
+const SAVE_PATH := "user://animation_vs_progress.cfg"
+const CATEGORIES := ["vehicles", "weapons", "abilities", "skins"]
 
 var credits := 240
 var mobile_mode := false
 var best_score := 0
+var player_color := "Mint"
+var player_design := "classic"
 var unlocked := {
 	"vehicles": ["board"],
-	"weapons": ["dagger"],
+	"weapons": [],
 	"abilities": ["ember"],
+	"skins": ["classic"],
 }
 var equipped := {
-	"vehicles": "board",
-	"weapons": "dagger",
-	"abilities": "ember",
+	"vehicles": "",
+	"weapons": "",
+	"abilities": "",
+	"skins": "classic",
 }
 
 func _ready() -> void:
-	_load_progress()
+	if not _load_progress():
+		_create_new_profile()
 
 func owns(category: String, item_id: String) -> bool:
 	return item_id in unlocked.get(category, [])
@@ -46,6 +51,30 @@ func equip(category: String, item_id: String) -> bool:
 	changed.emit()
 	return true
 
+func unequip(category: String) -> bool:
+	if category not in ["vehicles", "abilities"]:
+		return false
+	equipped[category] = ""
+	_save_progress()
+	changed.emit()
+	return true
+
+func set_player_color(color_name: String) -> bool:
+	if color_name not in GearCatalog.PLAYER_COLORS:
+		return false
+	player_color = color_name
+	_save_progress()
+	changed.emit()
+	return true
+
+func set_player_design(design_id: String) -> bool:
+	if design_id not in GearCatalog.PLAYER_DESIGNS:
+		return false
+	player_design = design_id
+	_save_progress()
+	changed.emit()
+	return true
+
 func toggle_mobile_mode() -> void:
 	mobile_mode = not mobile_mode
 	_save_progress()
@@ -58,33 +87,45 @@ func finish_round(score: int, reward: int) -> void:
 	changed.emit()
 
 func reset_progress() -> void:
+	_create_new_profile()
+	changed.emit()
+
+func _create_new_profile() -> void:
 	credits = 240
 	best_score = 0
-	unlocked = {"vehicles": ["board"], "weapons": ["dagger"], "abilities": ["ember"]}
-	equipped = {"vehicles": "board", "weapons": "dagger", "abilities": "ember"}
+	player_color = "Mint"
+	player_design = "classic"
+	var starter_options := GearCatalog.rough_weapon_ids()
+	var starter_weapon: String = starter_options.pick_random()
+	unlocked = {"vehicles": ["board"], "weapons": [starter_weapon], "abilities": ["ember"], "skins": ["classic"]}
+	equipped = {"vehicles": "", "weapons": starter_weapon, "abilities": "", "skins": "classic"}
 	_save_progress()
-	changed.emit()
 
 func _save_progress() -> void:
 	var config := ConfigFile.new()
 	config.set_value("profile", "credits", credits)
 	config.set_value("profile", "mobile_mode", mobile_mode)
 	config.set_value("profile", "best_score", best_score)
+	config.set_value("profile", "player_color", player_color)
+	config.set_value("profile", "player_design", player_design)
 	for category in CATEGORIES:
 		config.set_value("inventory", category, unlocked[category])
 		config.set_value("loadout", category, equipped[category])
 	config.save(SAVE_PATH)
 
-func _load_progress() -> void:
+func _load_progress() -> bool:
 	var config := ConfigFile.new()
 	if config.load(SAVE_PATH) != OK:
-		return
+		return false
 	credits = int(config.get_value("profile", "credits", credits))
 	mobile_mode = bool(config.get_value("profile", "mobile_mode", mobile_mode))
 	best_score = int(config.get_value("profile", "best_score", best_score))
+	player_color = str(config.get_value("profile", "player_color", player_color))
+	player_design = str(config.get_value("profile", "player_design", player_design))
 	for category in CATEGORIES:
 		var saved_items: Array = config.get_value("inventory", category, unlocked[category])
 		unlocked[category] = saved_items
 		var saved_equipped: String = str(config.get_value("loadout", category, equipped[category]))
-		if saved_equipped in saved_items:
+		if saved_equipped in saved_items or (saved_equipped.is_empty() and category in ["vehicles", "abilities"]):
 			equipped[category] = saved_equipped
+	return not equipped["weapons"].is_empty()
