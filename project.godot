@@ -10,6 +10,10 @@ run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 config/icon="res://assets/icon.svg"
 
+[autoload]
+
+Progress="*res://scripts/game_state.gd"
+
 [display]
 
 window/size/viewport_width=720
@@ -22,19 +26,31 @@ window/handheld/orientation=1
 
 move_left={
 "deadzone": 0.5,
-"events": [Object(InputEventKey,"device":-1,"keycode":65)]
+"events": [Object(InputEventKey,"device":-1,"keycode":65), Object(InputEventKey,"device":-1,"keycode":4194311)]
 }
 move_right={
 "deadzone": 0.5,
-"events": [Object(InputEventKey,"device":-1,"keycode":68)]
+"events": [Object(InputEventKey,"device":-1,"keycode":68), Object(InputEventKey,"device":-1,"keycode":4194313)]
 }
 move_up={
 "deadzone": 0.5,
-"events": [Object(InputEventKey,"device":-1,"keycode":87)]
+"events": [Object(InputEventKey,"device":-1,"keycode":87), Object(InputEventKey,"device":-1,"keycode":4194320)]
 }
 move_down={
 "deadzone": 0.5,
-"events": [Object(InputEventKey,"device":-1,"keycode":83)]
+"events": [Object(InputEventKey,"device":-1,"keycode":83), Object(InputEventKey,"device":-1,"keycode":4194322)]
+}
+attack={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"device":-1,"keycode":32)]
+}
+ability={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"device":-1,"keycode":81)]
+}
+boost={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"device":-1,"keycode":4194325)]
 }
 
 [rendering]
