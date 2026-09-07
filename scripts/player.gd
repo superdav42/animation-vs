@@ -24,8 +24,10 @@ var weapon_id := "dagger"
 var ability_style := ""
 var can_fly := false
 var ground_level := 1035.0
+var jump_requested := false
 
 const GRAVITY := 1900.0
+const JUMP_SPEED := -690.0
 const FLIGHT_THRUST := 1550.0
 const CEILING_Y := 285.0
 
@@ -61,19 +63,24 @@ func _physics_process(delta: float) -> void:
 	var keyboard := Input.get_vector("move_left", "move_right", "move_up", "move_down") if keyboard_enabled else Vector2.ZERO
 	var movement := mobile_vector if mobile_vector.length_squared() > keyboard.length_squared() else keyboard
 	var horizontal := clampf(movement.x, -1.0, 1.0)
-	var wants_jump := movement.y < -0.45
+	var wants_flight := movement.y < -0.45
+	var grounded := global_position.y >= ground_level - 1.0
+	var keyboard_jump := keyboard_enabled and Input.is_action_just_pressed("move_up")
 	if absf(horizontal) > 0.05:
 		facing = Vector2(signf(horizontal), 0.0)
 	var speed := base_speed * (boost_multiplier if boost_time > 0.0 else 1.0)
 	if slow_time > 0.0:
 		speed *= slow_multiplier
 	velocity.x = horizontal * speed
-	if can_fly and wants_jump and global_position.y > CEILING_Y:
+	if grounded and (jump_requested or keyboard_jump):
+		velocity.y = JUMP_SPEED
+	elif can_fly and wants_flight and global_position.y > CEILING_Y:
 		velocity.y = move_toward(velocity.y, -520.0, FLIGHT_THRUST * delta)
 	else:
 		velocity.y += GRAVITY * delta
 	if can_fly and movement.y > 0.45:
 		velocity.y += FLIGHT_THRUST * delta
+	jump_requested = false
 	move_and_slide()
 	walk_phase += absf(velocity.x) * delta * 0.035
 	var size := get_viewport_rect().size
@@ -85,6 +92,9 @@ func _physics_process(delta: float) -> void:
 
 func set_mobile_vector(value: Vector2) -> void:
 	mobile_vector = value
+
+func request_jump() -> void:
+	jump_requested = true
 
 func set_aim(point: Vector2) -> void:
 	var direction := global_position.direction_to(point)
@@ -150,10 +160,7 @@ func _draw() -> void:
 			draw_colored_polygon(PackedVector2Array([Vector2(-34, 12), Vector2(-55 - sin(Time.get_ticks_msec() * 0.02) * 5, 23), Vector2(-32, 27)]), Color("#ff5d5d"))
 			draw_circle(Vector2(-24, 34), 8.0, Color("#09141e"))
 			draw_circle(Vector2(25, 34), 8.0, Color("#09141e"))
-	if ability_style == "flight":
-		var wing_alpha := 0.5 + sin(Time.get_ticks_msec() * 0.006) * 0.2
-		draw_colored_polygon(PackedVector2Array([Vector2(-4, -5), Vector2(-42, -30), Vector2(-28, 8)]), Color(0.5, 0.82, 1.0, wing_alpha))
-		draw_colored_polygon(PackedVector2Array([Vector2(4, -5), Vector2(42, -30), Vector2(28, 8)]), Color(0.5, 0.82, 1.0, wing_alpha))
+	_draw_ability_texture()
 	var line_color := Color(body_color, pulse)
 	if skin_shape == "orbit":
 		draw_circle(Vector2(0, -28), 24.0, Color(body_color, 0.16), false, 5.0)
@@ -182,22 +189,41 @@ func _draw() -> void:
 	_draw_weapon(weapon_hand, direction.x)
 
 func _draw_weapon(hand: Vector2, side: float) -> void:
-	var tip := hand + Vector2(side * 34.0, -4.0)
+	var tip := hand + Vector2(side * 43.0, -4.0)
 	match weapon_id:
 		"dagger":
-			draw_colored_polygon(PackedVector2Array([hand, tip + Vector2(0, -5), tip + Vector2(side * 14, 0), tip + Vector2(0, 5)]), Color("#aab5b3"))
-			draw_line(hand + Vector2(side * 8, -5), hand + Vector2(side * 8, 5), Color("#7e442e"), 4.0)
-			draw_line(tip, tip + Vector2(side * 10, 0), Color("#d88955"), 2.0)
+			draw_colored_polygon(PackedVector2Array([hand, tip + Vector2(0, -8), tip + Vector2(side * 17, 0), tip + Vector2(0, 8)]), Color("#d9dfd7"))
+			draw_polyline(PackedVector2Array([hand, tip + Vector2(0, -8), tip + Vector2(side * 17, 0), tip + Vector2(0, 8), hand]), Color("#fff4bd"), 3.0)
+			draw_line(hand + Vector2(side * 9, -7), hand + Vector2(side * 9, 7), Color("#6f3526"), 6.0)
+			for i in range(3): draw_circle(hand + Vector2(side * (18 + i * 10), -3 + i * 3), 3.0, Color("#b95532"))
 		"bat":
-			draw_line(hand, tip + Vector2(side * 14, -4), Color("#93643d"), 12.0, true)
-			for i in range(3): draw_line(hand + Vector2(side * (7 + i * 5), -7), hand + Vector2(side * (10 + i * 5), 5), Color("#e4d3b0"), 3.0)
+			draw_line(hand, tip + Vector2(side * 17, -4), Color("#b37a48"), 16.0, true)
+			for i in range(4): draw_line(hand + Vector2(side * (7 + i * 7), -9), hand + Vector2(side * (12 + i * 7), 7), Color("#fff0c7"), 4.0)
 		"bow":
-			draw_arc(hand + Vector2(side * 16, 0), 26.0, -PI * 0.5, PI * 0.5, 16, Color("#71efc0"), 5.0)
-			draw_line(hand + Vector2(side * 16, -26), hand + Vector2(side * 16, 26), Color("#e9e4ce"), 2.0)
+			draw_arc(hand + Vector2(side * 21, 0), 31.0, -PI * 0.5, PI * 0.5, 16, Color("#71efc0"), 7.0)
+			draw_line(hand + Vector2(side * 21, -31), hand + Vector2(side * 21, 31), Color("#fff7dc"), 3.0)
 		"flame":
-			draw_rect(Rect2(hand + Vector2(minf(0.0, side * 34.0), -10), Vector2(34, 20)), Color("#d9573e"), true)
-			draw_line(hand + Vector2(side * 8, -7), tip, Color("#ffd36d"), 5.0)
+			draw_rect(Rect2(hand + Vector2(minf(0.0, side * 44.0), -13), Vector2(44, 26)), Color("#d9573e"), true)
+			for i in range(4): draw_line(hand + Vector2(side * (7 + i * 9), -11), hand + Vector2(side * (13 + i * 9), 11), Color("#ffb14f"), 4.0)
+			draw_line(hand + Vector2(side * 8, -7), tip + Vector2(side * 12, 0), Color("#fff06d"), 7.0)
 		_:
-			draw_rect(Rect2(hand + Vector2(minf(0.0, side * 36.0), -9), Vector2(36, 18)), Color("#527fa8"), true)
-			draw_line(hand + Vector2(side * 6, -5), hand + Vector2(side * 29, -5), Color("#9ff8ff"), 3.0)
-			for i in range(2): draw_circle(hand + Vector2(side * (12 + i * 12), 4), 2.5, Color("#d6ff77"))
+			draw_rect(Rect2(hand + Vector2(minf(0.0, side * 47.0), -13), Vector2(47, 26)), Color("#315f8f"), true)
+			draw_rect(Rect2(hand + Vector2(minf(0.0, side * 42.0), -9), Vector2(42, 8)), Color("#9ff8ff"), true)
+			for i in range(3): draw_circle(hand + Vector2(side * (11 + i * 12), 6), 3.5, Color("#d6ff77"))
+
+func _draw_ability_texture() -> void:
+	var pulse := 0.65 + sin(Time.get_ticks_msec() * 0.007) * 0.2
+	match ability_style:
+		"burst":
+			for radius in [31.0, 39.0, 47.0]: draw_arc(Vector2(0, -7), radius, -2.7, -0.45, 12, Color(1.0, 0.35, 0.16, pulse * 0.55), 4.0)
+		"vine":
+			draw_arc(Vector2(0, -5), 39.0, 0.1, PI * 1.6, 18, Color("#72e57d"), 5.0)
+			for angle in [0.4, 1.2, 2.1]: draw_circle(Vector2.RIGHT.rotated(angle) * 39.0 + Vector2(0, -5), 5.0, Color("#b3ff85"))
+		"blink":
+			for i in range(5): draw_rect(Rect2(-45 + i * 19, -62 + (i % 2) * 12, 9, 9), Color(0.56, 0.48, 1.0, pulse), true)
+		"inferno":
+			for i in range(8): draw_line(Vector2.RIGHT.rotated(i * TAU / 8.0) * 34.0 + Vector2(0, -7), Vector2.RIGHT.rotated(i * TAU / 8.0) * 50.0 + Vector2(0, -7), Color("#ffb640"), 6.0)
+		"flight":
+			var wing_alpha := 0.5 + sin(Time.get_ticks_msec() * 0.006) * 0.2
+			draw_colored_polygon(PackedVector2Array([Vector2(-4, -5), Vector2(-48, -36), Vector2(-30, 10)]), Color(0.5, 0.82, 1.0, wing_alpha))
+			draw_colored_polygon(PackedVector2Array([Vector2(4, -5), Vector2(48, -36), Vector2(30, 10)]), Color(0.5, 0.82, 1.0, wing_alpha))

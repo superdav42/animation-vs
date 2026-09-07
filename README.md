@@ -34,7 +34,7 @@ Progress, purchases, selected equipment, control mode, and best score are saved 
 - If the player equips an ability, the CPU receives a different ability at the same tier.
 - If the player leaves the vehicle or ability slot empty, the CPU must leave that slot empty too.
 - Defeat the CPU before 60 seconds expire. At timeout, the fighter with the greater percentage of health remaining wins.
-- Gravity keeps ordinary fighters and every vehicle on the floor. Gravity Wings are required for free flight; teleport abilities can move upward, but the fighter falls afterward.
+- Gravity returns every fighter and vehicle to the floor after a jump. Gravity Wings are required for sustained flight; teleport abilities can move upward, but the fighter falls afterward.
 - Most rounds award parts. A 12% reward roll replaces parts with one random unowned weapon, vehicle, or ability; Rough gear is most common and Legendary gear is rarest.
 
 ## Controls
@@ -42,7 +42,7 @@ Progress, purchases, selected equipment, control mode, and best score are saved 
 ### Keyboard mode
 
 - **A / D or left / right arrows:** move along the ground
-- **W / up arrow:** fly only while Gravity Wings are equipped
+- **W / up arrow:** jump from the floor; hold to fly while Gravity Wings are equipped
 - **Space:** attack
 - **Q:** use the equipped ability, when present
 - **Shift:** boost the equipped vehicle, when present
@@ -51,7 +51,7 @@ Progress, purchases, selected equipment, control mode, and best score are saved 
 
 ### Mobile mode
 
-Touch and drag in the left movement zone. A large joystick appears under the thumb only while it is being used and disappears on release. Drag sideways to move or upward to fly when Gravity Wings are equipped. The larger **Attack**, **Power**, and **Boost** buttons remain on the right. Power and Boost clearly show as unavailable when their optional gear slots are empty. Vine Weaver asks for a start and destination tap; nearby environment anchors act as snap points. Phase Blink asks for a destination tap.
+Touch and drag in the left movement zone. A large joystick appears under the thumb only while it is being used and disappears on release. Drag sideways to move or upward to fly when Gravity Wings are equipped. Use the dedicated **Jump** button to leave the floor. The large **Attack**, **Power**, and **Boost** buttons remain on the right. Power and Boost clearly show as unavailable when their optional gear slots are empty. Vine Weaver asks for a start and destination tap; nearby environment anchors act as snap points. Phase Blink asks for a destination tap.
 
 ### Face-to-face multiplayer
 

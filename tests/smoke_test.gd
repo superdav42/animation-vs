@@ -17,6 +17,10 @@ func _run() -> void:
 	var original_credits: int = progress.credits
 	var original_best_score: int = progress.best_score
 	var original_arena: String = progress.selected_arena
+	progress._create_new_profile()
+	_check(progress.selected_arena == "moon_dojo", "New profiles do not start with the redesigned Moon Dojo backdrop")
+	_check(progress._migrated_arena("neon_forest", 1) == "moon_dojo", "Existing profiles do not migrate from the former forest default")
+	_check(progress._migrated_arena("crystal_cavern", 2) == "crystal_cavern", "Current profiles lose their deliberate arena selection")
 	progress.mobile_mode = false
 	progress.equipped = {"vehicles": "board", "weapons": "dagger", "abilities": "vine", "skins": "classic"}
 	var main_scene: PackedScene = load("res://scenes/main.tscn")
@@ -122,6 +126,12 @@ func _run() -> void:
 	_check(mobile_arena.cpu_loadout["abilities"].is_empty(), "CPU received an ability when the player left the slot empty")
 	var joysticks: Array[Node] = mobile_arena.find_children("*", "Control", true, false).filter(func(node: Node) -> bool: return node.get_script() == mobile_arena.JoystickScript)
 	_check(joysticks.size() == 1, "Mobile mode did not create one floating joystick")
+	var mobile_jump_buttons := touch_buttons.filter(func(button: Button) -> bool: return button.text == "JUMP")
+	_check(mobile_jump_buttons.size() == 1, "Mobile mode did not create a dedicated JUMP button")
+	mobile_arena._jump_fighter(1)
+	mobile_arena.player._physics_process(0.05)
+	_check(mobile_arena.player.velocity.y < 0.0, "The mobile JUMP button did not launch a grounded fighter")
+	_check(mobile_arena.player.global_position.y < mobile_arena.arena_art.ground_y(), "Jumping did not lift the fighter above the floor")
 	var attack_buttons := touch_buttons.filter(func(button: Button) -> bool: return button.text == "ATTACK")
 	_check(attack_buttons.size() == 1 and attack_buttons[0].size.x >= 110.0, "Mobile attack control is not large enough")
 	mobile_arena.finished = true
@@ -134,6 +144,8 @@ func _run() -> void:
 	_check(multiplayer_arena.cpu.human_controlled, "Player 2 remained under CPU control")
 	var multiplayer_joysticks: Array[Node] = multiplayer_arena.find_children("*", "Control", true, false).filter(func(node: Node) -> bool: return node.get_script() == multiplayer_arena.JoystickScript)
 	_check(multiplayer_joysticks.size() == 2, "Multiplayer did not create two floating joysticks")
+	var multiplayer_jump_buttons: Array[Node] = multiplayer_arena.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "JUMP")
+	_check(multiplayer_jump_buttons.size() == 2, "Multiplayer did not create a JUMP button for each fighter")
 	var upside_down_controls: Array[Node] = multiplayer_arena.find_children("*", "Control", true, false).filter(func(node: Control) -> bool: return is_equal_approx(absf(node.rotation), PI))
 	_check(not upside_down_controls.is_empty(), "Player 2 controls were not rotated for face-to-face play")
 	multiplayer_arena.finished = true
@@ -155,7 +167,7 @@ func _run() -> void:
 	progress._save_progress()
 
 	if failures.is_empty():
-		print("SMOKE TEST PASS: distinct CPU gear, selectable arenas, grounded gravity, weighted drops, floating mobile joystick, textured combat, and face-to-face multiplayer")
+		print("SMOKE TEST PASS: distinct CPU gear, redesigned arena default, grounded jumping, weighted drops, floating mobile joystick, textured combat, and face-to-face multiplayer")
 		quit(0)
 	else:
 		for failure in failures:

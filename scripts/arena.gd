@@ -375,22 +375,24 @@ func _build_control_set(host: Control, player_number: int, equipped_ability: Str
 	var size := get_viewport_rect().size
 	var joystick := JoystickScript.new()
 	joystick.position = Vector2(0, size.y - 205)
-	joystick.size = Vector2(380, 205)
+	joystick.size = Vector2(292, 205)
 	joystick.changed.connect(_set_joystick_vector.bind(player_number))
 	host.add_child(joystick)
 	var move_hint := Label.new()
-	move_hint.text = "TOUCH + DRAG TO MOVE / FLY"
+	move_hint.text = "DRAG TO MOVE / FLY"
 	move_hint.position = Vector2(24, size.y - 62)
-	move_hint.size = Vector2(340, 38)
+	move_hint.size = Vector2(265, 38)
 	move_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	move_hint.add_theme_font_size_override("font_size", 15)
 	move_hint.add_theme_color_override("font_color", Color(0.72, 0.86, 0.82, 0.72))
 	host.add_child(move_hint)
-	var boost := _touch_button("BOOST" if not equipped_vehicle.is_empty() else "ON FOOT", Vector2(382, size.y - 112), Vector2(100, 94))
+	var jump := _touch_button("JUMP", Vector2(292, size.y - 122), Vector2(94, 104))
+	var boost := _touch_button("BOOST" if not equipped_vehicle.is_empty() else "ON FOOT", Vector2(392, size.y - 112), Vector2(94, 94))
 	var power_text := "FLY\nUSE STICK" if ability_style == "flight" else ("POWER" if not equipped_ability.is_empty() else "NO POWER")
-	var power := _touch_button(power_text, Vector2(490, size.y - 122), Vector2(100, 104))
-	var attack := _touch_button("ATTACK", Vector2(598, size.y - 142), Vector2(112, 124))
-	for button in [boost, power, attack]: host.add_child(button)
+	var power := _touch_button(power_text, Vector2(492, size.y - 122), Vector2(94, 104))
+	var attack := _touch_button("ATTACK", Vector2(592, size.y - 142), Vector2(118, 124))
+	for button in [jump, boost, power, attack]: host.add_child(button)
+	jump.pressed.connect(_jump_fighter.bind(player_number))
 	attack.button_down.connect(_set_fighter_attack.bind(player_number, true))
 	attack.button_up.connect(_set_fighter_attack.bind(player_number, false))
 	power.disabled = equipped_ability.is_empty() or ability_style == "flight"
@@ -443,6 +445,12 @@ func _set_fighter_attack(player_number: int, active: bool) -> void:
 		mobile_attack = active
 	else:
 		player_two_attack = active
+
+func _jump_fighter(player_number: int) -> void:
+	if player_number == 1:
+		player.request_jump()
+	else:
+		cpu.request_jump()
 
 func _player_two_boost() -> void:
 	if cpu.try_boost():

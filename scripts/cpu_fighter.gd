@@ -29,8 +29,10 @@ var boost_time := 0.0
 var boost_cooldown := 0.0
 var boost_multiplier := 1.3
 var ground_level := 1035.0
+var jump_requested := false
 
 const GRAVITY := 1900.0
+const JUMP_SPEED := -690.0
 const FLIGHT_THRUST := 1550.0
 const CEILING_Y := 285.0
 
@@ -93,7 +95,8 @@ func _physics_process(delta: float) -> void:
 		if can_fly and target.global_position.y < global_position.y - 70.0:
 			movement.y = -1.0
 	var horizontal := clampf(movement.x, -1.0, 1.0)
-	var wants_jump := movement.y < -0.45
+	var wants_flight := movement.y < -0.45
+	var grounded := global_position.y >= ground_level - 1.0
 	if absf(to_target.x) > 0.01:
 		facing = Vector2(signf(to_target.x), 0.0)
 	if human_controlled and absf(horizontal) > 0.05:
@@ -102,12 +105,15 @@ func _physics_process(delta: float) -> void:
 	if slow_time > 0.0:
 		speed *= slow_multiplier
 	velocity.x = horizontal * speed
-	if can_fly and wants_jump and global_position.y > CEILING_Y:
+	if grounded and jump_requested:
+		velocity.y = JUMP_SPEED
+	elif can_fly and wants_flight and global_position.y > CEILING_Y:
 		velocity.y = move_toward(velocity.y, -520.0, FLIGHT_THRUST * delta)
 	else:
 		velocity.y += GRAVITY * delta
 	if can_fly and movement.y > 0.45:
 		velocity.y += FLIGHT_THRUST * delta
+	jump_requested = false
 	move_and_slide()
 	walk_phase += absf(velocity.x) * delta * 0.035
 	var size := get_viewport_rect().size
@@ -131,6 +137,9 @@ func teleport_to(point: Vector2) -> void:
 
 func set_mobile_vector(value: Vector2) -> void:
 	mobile_vector = value
+
+func request_jump() -> void:
+	jump_requested = true
 
 func try_boost() -> bool:
 	if vehicle_id.is_empty() or boost_cooldown > 0.0:
@@ -186,10 +195,7 @@ func _draw() -> void:
 				draw_circle(Vector2(0, 18), 35.0, vehicle_color)
 				draw_line(Vector2(-22, 3), Vector2(18, 31), Color("#6e304f"), 4.0)
 				draw_line(Vector2(5, -8), Vector2(-8, 42), Color("#ffc071"), 3.0)
-	if can_fly:
-		var wing_alpha := 0.5 + sin(Time.get_ticks_msec() * 0.006) * 0.2
-		draw_colored_polygon(PackedVector2Array([Vector2(-4, -5), Vector2(-42, -30), Vector2(-28, 8)]), Color(0.95, 0.45, 0.82, wing_alpha))
-		draw_colored_polygon(PackedVector2Array([Vector2(4, -5), Vector2(42, -30), Vector2(28, 8)]), Color(0.95, 0.45, 0.82, wing_alpha))
+	_draw_ability_texture()
 	var stride := sin(walk_phase) * (8.0 if velocity.length_squared() > 10.0 else 1.5)
 	if skin_shape == "orbit":
 		draw_circle(Vector2(0, -28), 24.0, Color(body_color, 0.18), false, 5.0)
@@ -218,12 +224,12 @@ func _draw() -> void:
 	_draw_weapon(weapon_hand, facing.x)
 
 func _draw_weapon(hand: Vector2, side: float) -> void:
-	var tip := hand + Vector2(side * 36.0, -4.0)
+	var tip := hand + Vector2(side * 45.0, -4.0)
 	match weapon_id:
 		"wrench", "spear", "star_lance":
-			draw_line(hand, tip + Vector2(side * 10, 0), Color("#b987a9"), 8.0, true)
-			draw_line(tip + Vector2(side * 5, -7), tip + Vector2(side * 13, 7), Color("#ffd1ed"), 5.0)
-			for i in range(2): draw_line(hand + Vector2(side * (12 + i * 10), -4), hand + Vector2(side * (16 + i * 10), 4), Color("#6d315e"), 2.0)
+			draw_line(hand, tip + Vector2(side * 14, 0), Color("#d19abb"), 12.0, true)
+			draw_line(tip + Vector2(side * 6, -10), tip + Vector2(side * 17, 10), Color("#fff0fa"), 7.0)
+			for i in range(3): draw_line(hand + Vector2(side * (11 + i * 11), -7), hand + Vector2(side * (17 + i * 11), 7), Color("#642553"), 4.0)
 		"shock_hammer":
 			draw_line(hand, tip, Color("#8d557e"), 8.0)
 			draw_rect(Rect2(tip + Vector2(-10, -14), Vector2(20, 28)), Color("#e06bb0"), true)
@@ -232,6 +238,24 @@ func _draw_weapon(hand: Vector2, side: float) -> void:
 			draw_rect(Rect2(hand + Vector2(minf(0.0, side * 38.0), -10), Vector2(38, 20)), Color("#983f80"), true)
 			for i in range(3): draw_line(hand + Vector2(side * (7 + i * 8), -7), hand + Vector2(side * (12 + i * 8), 7), Color("#ff96db"), 2.0)
 		_:
-			draw_rect(Rect2(hand + Vector2(minf(0.0, side * 38.0), -9), Vector2(38, 18)), Color("#813e72"), true)
-			draw_line(hand + Vector2(side * 6, -5), hand + Vector2(side * 31, -5), Color("#ff96cf"), 3.0)
-			for i in range(2): draw_circle(hand + Vector2(side * (13 + i * 12), 4), 2.5, Color("#8de5ff"))
+			draw_rect(Rect2(hand + Vector2(minf(0.0, side * 49.0), -13), Vector2(49, 26)), Color("#813e72"), true)
+			draw_rect(Rect2(hand + Vector2(minf(0.0, side * 44.0), -9), Vector2(44, 8)), Color("#ff96cf"), true)
+			for i in range(3): draw_circle(hand + Vector2(side * (12 + i * 12), 6), 3.5, Color("#8de5ff"))
+
+func _draw_ability_texture() -> void:
+	var style: String = ability_data.get("style", "")
+	var pulse := 0.65 + sin(Time.get_ticks_msec() * 0.007) * 0.2
+	match style:
+		"burst":
+			for radius in [31.0, 39.0, 47.0]: draw_arc(Vector2(0, -7), radius, -2.7, -0.45, 12, Color(0.4, 0.75, 1.0, pulse * 0.6), 4.0)
+		"vine":
+			draw_arc(Vector2(0, -5), 39.0, 0.1, PI * 1.6, 18, Color("#e060b2"), 5.0)
+			for angle in [0.4, 1.2, 2.1]: draw_circle(Vector2.RIGHT.rotated(angle) * 39.0 + Vector2(0, -5), 5.0, Color("#ff9fd6"))
+		"blink":
+			for i in range(5): draw_rect(Rect2(-45 + i * 19, -62 + (i % 2) * 12, 9, 9), Color(0.95, 0.35, 0.75, pulse), true)
+		"inferno":
+			for i in range(8): draw_line(Vector2.RIGHT.rotated(i * TAU / 8.0) * 34.0 + Vector2(0, -7), Vector2.RIGHT.rotated(i * TAU / 8.0) * 50.0 + Vector2(0, -7), Color("#d05cff"), 6.0)
+		"flight":
+			var wing_alpha := 0.5 + sin(Time.get_ticks_msec() * 0.006) * 0.2
+			draw_colored_polygon(PackedVector2Array([Vector2(-4, -5), Vector2(-48, -36), Vector2(-30, 10)]), Color(0.95, 0.45, 0.82, wing_alpha))
+			draw_colored_polygon(PackedVector2Array([Vector2(4, -5), Vector2(48, -36), Vector2(30, 10)]), Color(0.95, 0.45, 0.82, wing_alpha))

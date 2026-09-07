@@ -11,12 +11,12 @@ Animation VS is a friendly top-down stick-figure duel where player choices creat
 - CPU weapons are randomly drawn from a separate pool and can never be the player's weapon.
 - Vehicles and abilities are optional. Each occupied player slot produces a different CPU counterpart at the same tier; each empty player slot forces the matching CPU slot to remain empty. CPU selection prefers a different combat style whenever its tier offers one.
 - A knockout ends the match immediately. Timeout compares remaining-health percentages so vehicle armour does not create an unfair tiebreaker.
-- Fighters have side-view gravity and a shared floor. Normal movement is horizontal, Gravity Wings alone permit flight, and teleported fighters fall naturally.
+- Fighters have side-view gravity, a shared floor, and a grounded jump. Gravity Wings alone permit sustained flight, and teleported fighters fall naturally.
 - A 12% post-round roll replaces parts with one unowned gear item. Relative tier weights are Rough 60, Good 25, Great 10, and Legendary 3.
 
 ## Visual language
 
-- **Atmosphere:** four selectable original procedural stages—Neon Forest, Moon Dojo, Ember Foundry, and Crystal Cavern—share deep surfaces, restrained background contrast, and bright gameplay accents.
+- **Atmosphere:** four selectable original procedural stages—Neon Forest, Moon Dojo, Ember Foundry, and Crystal Cavern—share deep surfaces, restrained background contrast, and bright gameplay accents. Moon Dojo is the default for new and migrated profiles so the redesigned setting is immediately visible.
 - **Sides:** the player uses mint and cream; the CPU uses magenta, violet, and red. These side colours remain consistent across health bars, vehicles, projectiles, vines, and effects.
 - **Palette:** `#07121e` night, `#43d9bd` player mint, `#f5f0d7` cream, `#e969a0` CPU magenta, `#ffd56b` parts.
 - **Fighters:** both sides are unmistakable animated stick figures. Moving limbs communicate travel; skins change head silhouettes and details without weakening the readable line-body form.
@@ -41,6 +41,7 @@ Skins are purchased in the Garage exclusively with earned parts. Customize Fight
 - Desktop and mobile are explicit player-selected modes; keyboard controls remain conventional and never use the touch joystick.
 - Mobile movement uses a dynamic joystick that appears at the initial touch point and disappears on release, preserving visibility while keeping thumb travel short.
 - Persistent mobile action targets are at least 94 virtual pixels high.
+- A dedicated persistent Jump button provides an unambiguous grounded jump for each mobile fighter; upward joystick input remains reserved for Gravity Wings flight.
 - Attack is always available; Power and Boost communicate when their optional slots are empty.
 - Targeted powers use a short instruction at the top of the arena.
 - Vine Weaver connects two chosen world points and snaps its origin to nearby branches, making background terrain mechanically meaningful.

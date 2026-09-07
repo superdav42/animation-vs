@@ -4,13 +4,14 @@ signal changed
 
 const SAVE_PATH := "user://animation_vs_progress.cfg"
 const CATEGORIES := ["vehicles", "weapons", "abilities", "skins"]
+const SAVE_VERSION := 2
 
 var credits := 240
 var mobile_mode := false
 var best_score := 0
 var player_color := "Mint"
 var player_design := "classic"
-var selected_arena := "neon_forest"
+var selected_arena := "moon_dojo"
 var unlocked := {
 	"vehicles": ["board"],
 	"weapons": [],
@@ -114,7 +115,7 @@ func _create_new_profile() -> void:
 	best_score = 0
 	player_color = "Mint"
 	player_design = "classic"
-	selected_arena = "neon_forest"
+	selected_arena = "moon_dojo"
 	var starter_options := GearCatalog.rough_weapon_ids()
 	var starter_weapon: String = starter_options.pick_random()
 	unlocked = {"vehicles": ["board"], "weapons": [starter_weapon], "abilities": ["ember"], "skins": ["classic"]}
@@ -129,6 +130,7 @@ func _save_progress() -> void:
 	config.set_value("profile", "player_color", player_color)
 	config.set_value("profile", "player_design", player_design)
 	config.set_value("profile", "selected_arena", selected_arena)
+	config.set_value("profile", "save_version", SAVE_VERSION)
 	for category in CATEGORIES:
 		config.set_value("inventory", category, unlocked[category])
 		config.set_value("loadout", category, equipped[category])
@@ -143,9 +145,8 @@ func _load_progress() -> bool:
 	best_score = int(config.get_value("profile", "best_score", best_score))
 	player_color = str(config.get_value("profile", "player_color", player_color))
 	player_design = str(config.get_value("profile", "player_design", player_design))
-	selected_arena = str(config.get_value("profile", "selected_arena", selected_arena))
-	if selected_arena not in GearCatalog.ARENAS:
-		selected_arena = "neon_forest"
+	var save_version := int(config.get_value("profile", "save_version", 0))
+	selected_arena = _migrated_arena(str(config.get_value("profile", "selected_arena", selected_arena)), save_version)
 	for category in CATEGORIES:
 		var saved_items: Array = config.get_value("inventory", category, unlocked[category])
 		unlocked[category] = saved_items
@@ -153,3 +154,8 @@ func _load_progress() -> bool:
 		if saved_equipped in saved_items or (saved_equipped.is_empty() and category in ["vehicles", "abilities"]):
 			equipped[category] = saved_equipped
 	return not equipped["weapons"].is_empty()
+
+func _migrated_arena(saved_arena: String, save_version: int) -> String:
+	if save_version < SAVE_VERSION or saved_arena not in GearCatalog.ARENAS:
+		return "moon_dojo"
+	return saved_arena
