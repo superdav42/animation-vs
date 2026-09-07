@@ -361,6 +361,7 @@ func _page_layout(title_text: String, subtitle_text: String) -> VBoxContainer:
 	layout.add_theme_constant_override("separation", 14)
 	margin.add_child(layout)
 	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 10)
 	layout.add_child(header)
 	var titles := VBoxContainer.new()
 	titles.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -372,12 +373,17 @@ func _page_layout(title_text: String, subtitle_text: String) -> VBoxContainer:
 	titles.add_child(title)
 	var subtitle := Label.new()
 	subtitle.text = subtitle_text
+	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	subtitle.custom_minimum_size.x = 0
+	subtitle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	subtitle.add_theme_font_size_override("font_size", 18)
 	subtitle.add_theme_color_override("font_color", Color("#9eb8b5"))
 	titles.add_child(subtitle)
 	var wallet := Label.new()
 	wallet.text = "PARTS  %d" % Progress.credits
-	wallet.add_theme_font_size_override("font_size", 21)
+	wallet.custom_minimum_size.x = 100
+	wallet.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	wallet.add_theme_font_size_override("font_size", 18)
 	wallet.add_theme_color_override("font_color", Color("#ffd56b"))
 	wallet.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	header.add_child(wallet)

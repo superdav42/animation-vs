@@ -459,7 +459,8 @@ func _update_hud() -> void:
 	hud_power.text = "%s  •  ATTACK     |     %s  •  %s" % [weapon_data["name"], ability_name, ability_status]
 
 func _cpu_intro_text() -> String:
-	var parts: Array[String] = ["CPU DRAW: %s" % cpu_loadout["weapon_data"]["name"]]
+	var opponent := "PLAYER 2" if game_mode == "multiplayer" else "CPU"
+	var parts: Array[String] = ["%s DRAW: %s" % [opponent, cpu_loadout["weapon_data"]["name"]]]
 	if not cpu_loadout["vehicles"].is_empty(): parts.append(cpu_loadout["vehicle_data"]["name"])
 	if not cpu_loadout["abilities"].is_empty(): parts.append(cpu_loadout["ability_data"]["name"])
 	return "  •  ".join(parts)
