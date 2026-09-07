@@ -10,6 +10,7 @@ var mobile_mode := false
 var best_score := 0
 var player_color := "Mint"
 var player_design := "classic"
+var selected_arena := "neon_forest"
 var unlocked := {
 	"vehicles": ["board"],
 	"weapons": [],
@@ -80,11 +81,29 @@ func toggle_mobile_mode() -> void:
 	_save_progress()
 	changed.emit()
 
-func finish_round(score: int, reward: int) -> void:
-	credits += reward
+func finish_round(score: int, reward: int, chance_roll := -1.0, item_roll := -1.0) -> Dictionary:
+	var outcome := {"credits": reward, "drop_category": "", "drop_id": "", "drop_data": {}}
+	var drop_chance: float = randf() if chance_roll < 0.0 else chance_roll
+	if drop_chance < 0.12:
+		var drop := GearCatalog.random_gear_drop(unlocked, item_roll)
+		if not drop.is_empty():
+			var category: String = drop["category"]
+			var item_id: String = drop["item_id"]
+			unlocked[category].append(item_id)
+			outcome = {"credits": 0, "drop_category": category, "drop_id": item_id, "drop_data": drop["data"]}
+	credits += int(outcome["credits"])
 	best_score = maxi(best_score, score)
 	_save_progress()
 	changed.emit()
+	return outcome
+
+func select_arena(arena_id: String) -> bool:
+	if arena_id not in GearCatalog.ARENAS:
+		return false
+	selected_arena = arena_id
+	_save_progress()
+	changed.emit()
+	return true
 
 func reset_progress() -> void:
 	_create_new_profile()
@@ -95,6 +114,7 @@ func _create_new_profile() -> void:
 	best_score = 0
 	player_color = "Mint"
 	player_design = "classic"
+	selected_arena = "neon_forest"
 	var starter_options := GearCatalog.rough_weapon_ids()
 	var starter_weapon: String = starter_options.pick_random()
 	unlocked = {"vehicles": ["board"], "weapons": [starter_weapon], "abilities": ["ember"], "skins": ["classic"]}
@@ -108,6 +128,7 @@ func _save_progress() -> void:
 	config.set_value("profile", "best_score", best_score)
 	config.set_value("profile", "player_color", player_color)
 	config.set_value("profile", "player_design", player_design)
+	config.set_value("profile", "selected_arena", selected_arena)
 	for category in CATEGORIES:
 		config.set_value("inventory", category, unlocked[category])
 		config.set_value("loadout", category, equipped[category])
@@ -122,6 +143,9 @@ func _load_progress() -> bool:
 	best_score = int(config.get_value("profile", "best_score", best_score))
 	player_color = str(config.get_value("profile", "player_color", player_color))
 	player_design = str(config.get_value("profile", "player_design", player_design))
+	selected_arena = str(config.get_value("profile", "selected_arena", selected_arena))
+	if selected_arena not in GearCatalog.ARENAS:
+		selected_arena = "neon_forest"
 	for category in CATEGORIES:
 		var saved_items: Array = config.get_value("inventory", category, unlocked[category])
 		unlocked[category] = saved_items

@@ -7,6 +7,7 @@ const CpuScript := preload("res://scripts/cpu_fighter.gd")
 const ProjectileScript := preload("res://scripts/projectile.gd")
 const VineScript := preload("res://scripts/vine.gd")
 const ArenaArtScript := preload("res://scripts/arena_art.gd")
+const JoystickScript := preload("res://scripts/virtual_joystick.gd")
 
 const ROUND_LENGTH := 60.0
 
@@ -36,10 +37,17 @@ var ability_id := ""
 var vehicle_id := ""
 var weapon_data: Dictionary
 var ability_data: Dictionary
+var game_mode := "cpu"
+var player_two_attack := false
+var player_horizontal := 0.0
+var player_jump := false
+var player_two_horizontal := 0.0
+var player_two_jump := false
 
 func _ready() -> void:
 	randomize()
 	arena_art = ArenaArtScript.new()
+	arena_art.configure(Progress.selected_arena)
 	arena_art.z_index = -10
 	add_child(arena_art)
 
@@ -51,24 +59,27 @@ func _ready() -> void:
 	cpu_loadout = GearCatalog.build_cpu_loadout(Progress.equipped)
 
 	player = PlayerScene.instantiate()
-	player.global_position = get_viewport_rect().size * Vector2(0.5, 0.72)
-	player.keyboard_enabled = not Progress.mobile_mode
+	player.global_position = Vector2(get_viewport_rect().size.x * 0.25, arena_art.ground_y())
+	player.keyboard_enabled = not Progress.mobile_mode and game_mode == "cpu"
 	player.add_to_group("player")
 	player.health_changed.connect(_on_player_health_changed)
-	player.defeated.connect(_finish_round.bind(false, "DEFEAT"))
+	player.defeated.connect(_on_player_defeated)
 	add_child(player)
 
 	cpu = CpuScript.new()
-	cpu.global_position = get_viewport_rect().size * Vector2(0.5, 0.3)
+	cpu.global_position = Vector2(get_viewport_rect().size.x * 0.75, arena_art.ground_y())
+	cpu.human_controlled = game_mode == "multiplayer"
 	cpu.health_changed.connect(_on_cpu_health_changed)
-	cpu.defeated.connect(_finish_round.bind(true, "VICTORY"))
+	cpu.defeated.connect(_on_opponent_defeated)
 	add_child(cpu)
 
 	_build_hud()
 	var player_skin: Dictionary = GearCatalog.item("skins", Progress.equipped["skins"])
 	var player_color: Color = GearCatalog.PLAYER_COLORS.get(Progress.player_color, Color("#63e6bc"))
-	player.configure(GearCatalog.item("vehicles", vehicle_id) if not vehicle_id.is_empty() else {}, vehicle_id, player_skin, player_color, Progress.player_design)
+	player.configure(GearCatalog.item("vehicles", vehicle_id) if not vehicle_id.is_empty() else {}, vehicle_id, player_skin, player_color, Progress.player_design, weapon_id, ability_data)
 	cpu.configure(cpu_loadout, player, player_color, Progress.player_design, player_skin.get("shape", "round"))
+	player.facing = Vector2.RIGHT
+	cpu.facing = Vector2.LEFT
 	aim_position = cpu.global_position
 	player.set_aim(aim_position)
 	hint_label.text = _cpu_intro_text()
@@ -91,7 +102,11 @@ func _process(delta: float) -> void:
 		_activate_player_ability()
 	if not Progress.mobile_mode and Input.is_action_just_pressed("boost"):
 		_player_boost()
-	_cpu_think()
+	if game_mode == "multiplayer":
+		if player_two_attack and target_stage == 0:
+			_cpu_attack()
+	else:
+		_cpu_think()
 	_check_projectile_hits()
 	_update_hud()
 	if time_left <= 0.0:
@@ -155,6 +170,8 @@ func _activate_player_ability() -> void:
 	if ability_id.is_empty() or ability_clock > 0.0 or target_stage > 0:
 		return
 	match ability_data.get("style", ""):
+		"flight":
+			hint_label.text = "GRAVITY WINGS  •  HOLD JUMP TO FLY"
 		"burst":
 			if player.global_position.distance_to(cpu.global_position) <= 190.0:
 				cpu.take_damage(45.0)
@@ -204,6 +221,8 @@ func _cpu_attack() -> void:
 func _cpu_use_ability() -> void:
 	var style: String = cpu.ability_data.get("style", "")
 	match style:
+		"flight":
+			return
 		"burst":
 			if cpu.global_position.distance_to(player.global_position) > 230.0:
 				return
@@ -214,7 +233,7 @@ func _cpu_use_ability() -> void:
 			var destination: Vector2 = player.global_position + player.velocity * 0.32
 			_create_vine(start, destination, "cpu")
 		"blink":
-			var flank: Vector2 = player.global_position + player.facing.rotated(PI * 0.5) * 145.0
+			var flank := player.global_position + Vector2(-player.facing.x * 145.0, -120.0)
 			_spawn_ring(cpu.global_position, Color("#e66fd0"), 65.0)
 			cpu.teleport_to(flank)
 			_spawn_ring(cpu.global_position, Color("#e66fd0"), 65.0)
@@ -258,7 +277,15 @@ func _finish_timeout() -> void:
 	if is_equal_approx(player_ratio, cpu_ratio):
 		_finish_round(false, "DRAW")
 	else:
-		_finish_round(player_ratio > cpu_ratio, "VICTORY" if player_ratio > cpu_ratio else "DEFEAT")
+		var player_won := player_ratio > cpu_ratio
+		var result := ("PLAYER 1 WINS" if player_won else "PLAYER 2 WINS") if game_mode == "multiplayer" else ("VICTORY" if player_won else "DEFEAT")
+		_finish_round(player_won, result)
+
+func _on_player_defeated() -> void:
+	_finish_round(false, "PLAYER 2 WINS" if game_mode == "multiplayer" else "DEFEAT")
+
+func _on_opponent_defeated() -> void:
+	_finish_round(true, "PLAYER 1 WINS" if game_mode == "multiplayer" else "VICTORY")
 
 func _finish_round(won: bool, result: String) -> void:
 	if finished:
@@ -274,6 +301,8 @@ func _finish_round(won: bool, result: String) -> void:
 		"credits": reward,
 		"damage": damage_dealt,
 		"cpu_loadout": cpu_loadout,
+		"opponent_label": "PLAYER 2" if game_mode == "multiplayer" else "CPU",
+		"game_mode": game_mode,
 	})
 
 func _build_hud() -> void:
@@ -285,27 +314,28 @@ func _build_hud() -> void:
 	layer.add_child(root)
 
 	var top_panel := PanelContainer.new()
-	top_panel.position = Vector2(22, 20)
+	top_panel.position = Vector2(22, 490 if game_mode == "multiplayer" else 20)
 	top_panel.size = Vector2(get_viewport_rect().size.x - 44, 92)
 	top_panel.add_theme_stylebox_override("panel", _box(Color(0.025, 0.08, 0.11, 0.95), Color("#654c76"), 2, 22))
 	root.add_child(top_panel)
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 12)
 	top_panel.add_child(top)
-	hud_player = _hud_heading("YOU", HORIZONTAL_ALIGNMENT_LEFT, Color("#6ee8bd"))
+	hud_player = _hud_heading("PLAYER 1" if game_mode == "multiplayer" else "YOU", HORIZONTAL_ALIGNMENT_LEFT, Color("#6ee8bd"))
 	hud_timer = _hud_heading("1:00", HORIZONTAL_ALIGNMENT_CENTER, Color("#f3edcf"))
-	hud_cpu = _hud_heading("CPU", HORIZONTAL_ALIGNMENT_RIGHT, Color("#f07eac"))
+	hud_cpu = _hud_heading("PLAYER 2" if game_mode == "multiplayer" else "CPU", HORIZONTAL_ALIGNMENT_RIGHT, Color("#f07eac"))
 	top.add_child(hud_player)
 	top.add_child(hud_timer)
 	top.add_child(hud_cpu)
 
-	player_health_bar = _health_bar(Vector2(30, 117), Vector2(306, 18), Color("#5ce39e"))
-	cpu_health_bar = _health_bar(Vector2(get_viewport_rect().size.x - 336, 117), Vector2(306, 18), Color("#e969a0"))
+	var health_y := 587.0 if game_mode == "multiplayer" else 117.0
+	player_health_bar = _health_bar(Vector2(30, health_y), Vector2(306, 18), Color("#5ce39e"))
+	cpu_health_bar = _health_bar(Vector2(get_viewport_rect().size.x - 336, health_y), Vector2(306, 18), Color("#e969a0"))
 	root.add_child(player_health_bar)
 	root.add_child(cpu_health_bar)
 
 	hud_power = Label.new()
-	hud_power.position = Vector2(28, 143)
+	hud_power.position = Vector2(28, 613 if game_mode == "multiplayer" else 143)
 	hud_power.size = Vector2(get_viewport_rect().size.x - 56, 56)
 	hud_power.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hud_power.add_theme_font_size_override("font_size", 16)
@@ -313,7 +343,7 @@ func _build_hud() -> void:
 	root.add_child(hud_power)
 
 	hint_label = Label.new()
-	hint_label.position = Vector2(30, 202)
+	hint_label.position = Vector2(30, 670 if game_mode == "multiplayer" else 202)
 	hint_label.size = Vector2(get_viewport_rect().size.x - 60, 78)
 	hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -324,47 +354,60 @@ func _build_hud() -> void:
 
 	var exit := Button.new()
 	exit.text = "×"
-	exit.position = Vector2(get_viewport_rect().size.x - 68, 154)
+	exit.position = Vector2(get_viewport_rect().size.x - 68, 620 if game_mode == "multiplayer" else 154)
 	exit.size = Vector2(38, 38)
 	exit.add_theme_font_size_override("font_size", 22)
 	exit.pressed.connect(_finish_round.bind(false, "FORFEIT"))
 	root.add_child(exit)
-	if Progress.mobile_mode:
+	if Progress.mobile_mode or game_mode == "multiplayer":
 		_build_touch_controls(root)
 
 func _build_touch_controls(root: Control) -> void:
-	var size := get_viewport_rect().size
-	var center := Vector2(138, size.y - 170)
-	var up := _touch_button("▲", center + Vector2(-33, -95), Vector2(66, 66))
-	var down := _touch_button("▼", center + Vector2(-33, 35), Vector2(66, 66))
-	var left := _touch_button("◀", center + Vector2(-98, -30), Vector2(66, 66))
-	var right := _touch_button("▶", center + Vector2(32, -30), Vector2(66, 66))
-	for button in [up, down, left, right]: root.add_child(button)
-	up.button_down.connect(_set_mobile_direction.bind(Vector2.UP))
-	down.button_down.connect(_set_mobile_direction.bind(Vector2.DOWN))
-	left.button_down.connect(_set_mobile_direction.bind(Vector2.LEFT))
-	right.button_down.connect(_set_mobile_direction.bind(Vector2.RIGHT))
-	for button in [up, down, left, right]: button.button_up.connect(_set_mobile_direction.bind(Vector2.ZERO))
+	_build_control_set(root, 1, ability_id, vehicle_id, ability_data.get("style", ""))
+	if game_mode == "multiplayer":
+		var top_controls := Control.new()
+		top_controls.position = get_viewport_rect().size
+		top_controls.rotation = PI
+		root.add_child(top_controls)
+		_build_control_set(top_controls, 2, cpu.ability_id, cpu.vehicle_id, cpu.ability_data.get("style", ""))
 
-	var attack := _touch_button("ATTACK", Vector2(size.x - 184, size.y - 228), Vector2(142, 78))
-	var power := _touch_button("POWER" if not ability_id.is_empty() else "NO POWER", Vector2(size.x - 204, size.y - 137), Vector2(162, 70))
-	var boost := _touch_button("BOOST" if not vehicle_id.is_empty() else "ON FOOT", Vector2(size.x - 355, size.y - 112), Vector2(120, 60))
-	power.disabled = ability_id.is_empty()
-	boost.disabled = vehicle_id.is_empty()
-	root.add_child(attack)
-	root.add_child(power)
-	root.add_child(boost)
-	attack.button_down.connect(_set_mobile_attack.bind(true))
-	attack.button_up.connect(_set_mobile_attack.bind(false))
-	power.pressed.connect(_activate_player_ability)
-	boost.pressed.connect(_player_boost)
+func _build_control_set(host: Control, player_number: int, equipped_ability: String, equipped_vehicle: String, ability_style: String) -> void:
+	var size := get_viewport_rect().size
+	var joystick := JoystickScript.new()
+	joystick.position = Vector2(0, size.y - 205)
+	joystick.size = Vector2(380, 205)
+	joystick.changed.connect(_set_joystick_vector.bind(player_number))
+	host.add_child(joystick)
+	var move_hint := Label.new()
+	move_hint.text = "TOUCH + DRAG TO MOVE / FLY"
+	move_hint.position = Vector2(24, size.y - 62)
+	move_hint.size = Vector2(340, 38)
+	move_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	move_hint.add_theme_font_size_override("font_size", 15)
+	move_hint.add_theme_color_override("font_color", Color(0.72, 0.86, 0.82, 0.72))
+	host.add_child(move_hint)
+	var boost := _touch_button("BOOST" if not equipped_vehicle.is_empty() else "ON FOOT", Vector2(382, size.y - 112), Vector2(100, 94))
+	var power_text := "FLY\nUSE STICK" if ability_style == "flight" else ("POWER" if not equipped_ability.is_empty() else "NO POWER")
+	var power := _touch_button(power_text, Vector2(490, size.y - 122), Vector2(100, 104))
+	var attack := _touch_button("ATTACK", Vector2(598, size.y - 142), Vector2(112, 124))
+	for button in [boost, power, attack]: host.add_child(button)
+	attack.button_down.connect(_set_fighter_attack.bind(player_number, true))
+	attack.button_up.connect(_set_fighter_attack.bind(player_number, false))
+	power.disabled = equipped_ability.is_empty() or ability_style == "flight"
+	boost.disabled = equipped_vehicle.is_empty()
+	if player_number == 1:
+		power.pressed.connect(_activate_player_ability)
+		boost.pressed.connect(_player_boost)
+	else:
+		power.pressed.connect(_cpu_use_ability)
+		boost.pressed.connect(_player_two_boost)
 
 func _touch_button(text: String, position: Vector2, size: Vector2) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.position = position
 	button.size = size
-	button.add_theme_font_size_override("font_size", 18)
+	button.add_theme_font_size_override("font_size", 17)
 	button.add_theme_stylebox_override("normal", _box(Color(0.04, 0.16, 0.19, 0.88), Color("#4cc6a2"), 2, 18))
 	button.add_theme_stylebox_override("pressed", _box(Color(0.18, 0.55, 0.44, 0.95), Color("#b4ffcf"), 2, 18))
 	return button
@@ -375,15 +418,45 @@ func _set_mobile_direction(direction: Vector2) -> void:
 func _set_mobile_attack(active: bool) -> void:
 	mobile_attack = active
 
+func _set_joystick_vector(value: Vector2, player_number: int) -> void:
+	if player_number == 1:
+		player.set_mobile_vector(value)
+	else:
+		cpu.set_mobile_vector(value)
+
+func _set_touch_direction(player_number: int, horizontal: float, jump_control: bool, pressed: bool) -> void:
+	if player_number == 1:
+		if jump_control:
+			player_jump = pressed
+		elif pressed or is_equal_approx(player_horizontal, horizontal):
+			player_horizontal = horizontal if pressed else 0.0
+		player.set_mobile_vector(Vector2(player_horizontal, -1.0 if player_jump else 0.0))
+	else:
+		if jump_control:
+			player_two_jump = pressed
+		elif pressed or is_equal_approx(player_two_horizontal, horizontal):
+			player_two_horizontal = horizontal if pressed else 0.0
+		cpu.set_mobile_vector(Vector2(player_two_horizontal, -1.0 if player_two_jump else 0.0))
+
+func _set_fighter_attack(player_number: int, active: bool) -> void:
+	if player_number == 1:
+		mobile_attack = active
+	else:
+		player_two_attack = active
+
+func _player_two_boost() -> void:
+	if cpu.try_boost():
+		_spawn_ring(cpu.global_position, Color("#e969a0"), 90.0)
+
 func _update_hud() -> void:
 	if not hud_timer:
 		return
 	hud_timer.text = "%d:%02d" % [int(int(time_left) / 60.0), int(time_left) % 60]
-	hud_player.text = "YOU\n%s" % weapon_data["name"]
-	hud_cpu.text = "CPU\n%s" % cpu.weapon_data["name"]
+	hud_player.text = "%s\n%s" % ["PLAYER 1" if game_mode == "multiplayer" else "YOU", weapon_data["name"]]
+	hud_cpu.text = "%s\n%s" % ["PLAYER 2" if game_mode == "multiplayer" else "CPU", cpu.weapon_data["name"]]
 	var ability_name: String = ability_data.get("name", "NO ABILITY")
-	var ability_status: String = "—" if ability_id.is_empty() else ("READY" if ability_clock <= 0.0 else "%.1fs" % ability_clock)
-	hud_power.text = "%s  •  SPACE / ATTACK     |     %s  •  %s" % [weapon_data["name"], ability_name, ability_status]
+	var ability_status: String = "—" if ability_id.is_empty() else ("HOLD UP" if ability_data.get("style", "") == "flight" else ("READY" if ability_clock <= 0.0 else "%.1fs" % ability_clock))
+	hud_power.text = "%s  •  ATTACK     |     %s  •  %s" % [weapon_data["name"], ability_name, ability_status]
 
 func _cpu_intro_text() -> String:
 	var parts: Array[String] = ["CPU DRAW: %s" % cpu_loadout["weapon_data"]["name"]]
@@ -437,19 +510,21 @@ func _spawn_flame(origin: Vector2, direction: Vector2, cpu_flame: bool) -> void:
 		tween.tween_callback(spark.queue_free)
 
 func _spawn_ring(position: Vector2, color: Color, radius: float) -> void:
-	var ring := Line2D.new()
-	ring.width = 7.0
-	ring.default_color = color
-	var points := PackedVector2Array()
-	for i in range(33): points.append(Vector2.RIGHT.rotated(i * TAU / 32.0) * 16.0)
-	ring.points = points
-	ring.closed = true
-	ring.global_position = position
-	add_child(ring)
-	var tween := create_tween()
-	tween.tween_property(ring, "scale", Vector2.ONE * (radius / 16.0), 0.35)
-	tween.parallel().tween_property(ring, "modulate:a", 0.0, 0.35)
-	tween.tween_callback(ring.queue_free)
+	for band in range(3):
+		var ring := Line2D.new()
+		ring.width = 8.0 - band * 2.0
+		ring.default_color = Color(color, 0.92 - band * 0.2)
+		var points := PackedVector2Array()
+		for i in range(33): points.append(Vector2.RIGHT.rotated(i * TAU / 32.0) * (13.0 + band * 5.0))
+		ring.points = points
+		ring.closed = true
+		ring.global_position = position
+		ring.rotation = band * 0.18
+		add_child(ring)
+		var tween := create_tween()
+		tween.tween_property(ring, "scale", Vector2.ONE * (radius / (13.0 + band * 5.0)), 0.32 + band * 0.04)
+		tween.parallel().tween_property(ring, "modulate:a", 0.0, 0.35)
+		tween.tween_callback(ring.queue_free)
 
 func _box(fill: Color, border: Color, width: int, radius: int) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()

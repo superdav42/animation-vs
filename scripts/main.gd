@@ -42,7 +42,7 @@ func _show_home() -> void:
 	margin.add_child(layout)
 
 	var kicker := Label.new()
-	kicker.text = "PLAYER // CPU  •  DRAW YOUR GEAR"
+	kicker.text = "SOLO OR LOCAL MULTIPLAYER  •  DRAW YOUR GEAR"
 	kicker.add_theme_font_size_override("font_size", 18)
 	kicker.add_theme_color_override("font_color", Color("#61e2bb"))
 	layout.add_child(kicker)
@@ -66,6 +66,13 @@ func _show_home() -> void:
 	var play := _menu_button("PLAY A ROUND", "fight a randomized CPU rival", true)
 	play.pressed.connect(_start_round)
 	layout.add_child(play)
+	var multiplayer := _menu_button("MULTIPLAYER", "face-to-face local duel with two control sets", true)
+	multiplayer.pressed.connect(_start_round.bind("multiplayer"))
+	layout.add_child(multiplayer)
+	var arena_data: Dictionary = GearCatalog.ARENAS[Progress.selected_arena]
+	var arenas := _menu_button("CHOOSE ARENA:  %s" % arena_data["name"].to_upper(), "pick the background before the round")
+	arenas.pressed.connect(_show_arenas)
+	layout.add_child(arenas)
 	var garage := _menu_button("GARAGE", "buy gear, powers & skins")
 	garage.pressed.connect(_show_garage)
 	layout.add_child(garage)
@@ -313,8 +320,34 @@ func _show_help() -> void:
 	text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	text.add_theme_font_size_override("font_size", 22)
 	text.add_theme_color_override("font_color", Color("#d5e3da"))
-	text.text = "VS RULES\nYour first weapon is randomly chosen from the Rough tier. The CPU draws a different weapon at your tier. Optional vehicle and ability slots are mirrored with different CPU gear. Buy skins with earned parts, then choose skin, line colour, and face design in Customize Fighter.\n\nKEYBOARD MODE\nWASD / ARROWS   Move\nSPACE   Use weapon\nQ   Use equipped power\nSHIFT   Vehicle boost\nMOUSE   Aim and choose targets\nESC   Forfeit\n\nMOBILE MODE\nUse the direction pad plus ATTACK, POWER, and BOOST. Targeted powers ask you to tap the arena."
+	text.text = "VS RULES\nThe CPU always draws visibly different gear at your equipment tiers. Gravity keeps every fighter on the floor. Only Gravity Wings allow upward flight; teleports may move upward, but gravity pulls you back down. A low-chance post-round reward replaces parts with a random gear unlock, with high tiers much rarer.\n\nKEYBOARD MODE\nA / D or LEFT / RIGHT   Move sideways\nW / UP   Fly only with Gravity Wings\nSPACE   Use weapon\nQ   Use equipped power\nSHIFT   Vehicle boost\nMOUSE   Aim and choose targets\nESC   Forfeit\n\nMOBILE MODE\nTouch and drag anywhere in the left movement zone. The large joystick appears under your thumb, then disappears on release. Drag sideways to move or upward to fly when equipped. ATTACK, POWER, and BOOST remain large on the right.\n\nMULTIPLAYER\nPlayer 1 uses the bottom controls. Player 2 uses the upside-down controls at the top for face-to-face play."
 	panel.add_child(text)
+
+func _show_arenas() -> void:
+	_clear_screen()
+	backdrop.show()
+	var layout := _page_layout("CHOOSE ARENA", "Your selected background is used for solo and multiplayer rounds.")
+	var list := VBoxContainer.new()
+	list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 14)
+	layout.add_child(list)
+	for arena_id in GearCatalog.ARENAS:
+		var data: Dictionary = GearCatalog.ARENAS[arena_id]
+		var active: bool = Progress.selected_arena == arena_id
+		var button := Button.new()
+		button.text = "%s\n%s  •  %s" % [data["name"].to_upper(), data["description"], "SELECTED" if active else "TAP TO SELECT"]
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		button.custom_minimum_size.y = 142
+		button.add_theme_font_size_override("font_size", 19)
+		button.add_theme_stylebox_override("normal", _box(Color(data["accent"], 0.13), data["accent"], 4 if active else 2, 20))
+		if not active:
+			button.pressed.connect(_select_arena.bind(arena_id))
+		list.add_child(button)
+
+func _select_arena(arena_id: String) -> void:
+	Progress.select_arena(arena_id)
+	_show_arenas()
 
 func _page_layout(title_text: String, subtitle_text: String) -> VBoxContainer:
 	var margin := MarginContainer.new()
@@ -359,8 +392,8 @@ func _menu_button(title: String, detail: String, primary := false) -> Button:
 	var button := Button.new()
 	button.text = "%s\n%s" % [title, detail]
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	button.custom_minimum_size.y = 92 if primary else 72
-	button.add_theme_font_size_override("font_size", 21 if primary else 18)
+	button.custom_minimum_size.y = 80 if primary else 62
+	button.add_theme_font_size_override("font_size", 19 if primary else 17)
 	var fill := Color("#196d58") if primary else Color(0.035, 0.12, 0.15, 0.94)
 	var border := Color("#82f3bb") if primary else Color("#275c53")
 	button.add_theme_stylebox_override("normal", _box(fill, border, 2, 19))
@@ -403,15 +436,20 @@ func _toggle_mode() -> void:
 	Progress.toggle_mobile_mode()
 	_show_home()
 
-func _start_round() -> void:
+func _start_round(game_mode := "cpu") -> void:
 	_clear_screen()
 	backdrop.hide()
 	var arena := ArenaScript.new()
+	arena.game_mode = game_mode
 	arena.round_finished.connect(_on_round_finished)
 	screen.add_child(arena)
 
 func _on_round_finished(summary: Dictionary) -> void:
-	Progress.finish_round(summary["score"], summary["credits"])
+	var reward: Dictionary = Progress.finish_round(summary["score"], summary["credits"])
+	summary["credits"] = reward["credits"]
+	summary["drop_category"] = reward["drop_category"]
+	summary["drop_id"] = reward["drop_id"]
+	summary["drop_data"] = reward["drop_data"]
 	_show_results(summary)
 
 func _show_results(summary: Dictionary) -> void:
@@ -441,14 +479,19 @@ func _show_results(summary: Dictionary) -> void:
 	layout.add_child(panel)
 	var stats := Label.new()
 	var cpu_weapon: String = summary["cpu_loadout"]["weapon_data"]["name"]
-	stats.text = "SCORE\n%06d\n\nDAMAGE  %d     CPU  %s\n\n+%d PARTS" % [summary["score"], summary["damage"], cpu_weapon.to_upper(), summary["credits"]]
+	var opponent_label: String = summary.get("opponent_label", "CPU")
+	var reward_text := "+%d PARTS" % summary["credits"]
+	if not summary.get("drop_id", "").is_empty():
+		var drop_data: Dictionary = summary["drop_data"]
+		reward_text = "RARE GEAR DROP!\n%s  //  %s\nNO PARTS THIS ROUND" % [drop_data["name"].to_upper(), drop_data["tier"].to_upper()]
+	stats.text = "SCORE\n%06d\n\nDAMAGE  %d     %s  %s\n\n%s" % [summary["score"], summary["damage"], opponent_label, cpu_weapon.to_upper(), reward_text]
 	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	stats.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	stats.add_theme_font_size_override("font_size", 25)
 	stats.add_theme_color_override("font_color", Color("#f2edd2"))
 	panel.add_child(stats)
 	var replay := _menu_button("PLAY AGAIN", "take the new loadout back in", true)
-	replay.pressed.connect(_start_round)
+	replay.pressed.connect(_start_round.bind(summary.get("game_mode", "cpu")))
 	layout.add_child(replay)
 	var home := _menu_button("RETURN HOME", "garage, loadout & controls")
 	home.pressed.connect(_show_home)
