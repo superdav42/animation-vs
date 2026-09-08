@@ -41,9 +41,12 @@ func hit(target: Node) -> void:
 		queue_free()
 
 func _draw() -> void:
-	draw_line(Vector2(-24, 0), Vector2(8, 0), Color(color, 0.24), 13.0, true)
+	draw_line(Vector2(-34, 0), Vector2(9, 0), Color(color, 0.1), 22.0, true)
+	draw_line(Vector2(-28, 0), Vector2(9, 0), Color(color, 0.28), 13.0, true)
+	draw_line(Vector2(-18, 0), Vector2(8, 0), Color(color, 0.72), 5.0, true)
 	match weapon_id:
 		"popgun", "pebbler":
+			draw_circle(Vector2(8, 0), 14.0, Color(color, 0.18))
 			draw_circle(Vector2(8, 0), 9.0, color)
 			draw_circle(Vector2(8, 0), 5.0, Color("#27343b"))
 			draw_circle(Vector2(8, 0), 2.0, Color.WHITE)

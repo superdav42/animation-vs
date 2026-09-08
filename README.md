@@ -15,7 +15,7 @@ godot --path .
 The home screen provides eight destinations:
 
 1. **Play a Round** — fight a randomized CPU rival and earn parts.
-2. **Multiplayer** — start a face-to-face local duel with mirrored touch controls.
+2. **Multiplayer** — choose Player 2's owned gear, then start a face-to-face duel with opposite-side controls.
 3. **Choose Arena** — select Neon Forest, Moon Dojo, Ember Foundry, or Crystal Cavern before starting.
 4. **Garage** — buy vehicles, weapons, abilities, and cosmetic skins using earned parts.
 5. **Control Mode** — switch between desktop keybinds and on-screen mobile controls.
@@ -34,7 +34,7 @@ Progress, purchases, selected equipment, control mode, and best score are saved 
 - If the player equips an ability, the CPU receives a different ability at the same tier.
 - If the player leaves the vehicle or ability slot empty, the CPU must leave that slot empty too.
 - Defeat the CPU before 60 seconds expire. At timeout, the fighter with the greater percentage of health remaining wins.
-- Gravity returns every fighter and vehicle to the floor after a jump. Gravity Wings are required for sustained flight; teleport abilities can move upward, but the fighter falls afterward.
+- Gravity returns ordinary fighters and grounded vehicles to the floor after a jump. Gravity Wings and the Pocket Rocket support sustained flight; teleport abilities can move upward, but the fighter falls afterward.
 - Most rounds award parts. A 12% reward roll replaces parts with one random unowned weapon, vehicle, or ability; Rough gear is most common and Legendary gear is rarest.
 
 ## Controls
@@ -42,20 +42,27 @@ Progress, purchases, selected equipment, control mode, and best score are saved 
 ### Keyboard mode
 
 - **A / D or left / right arrows:** move along the ground
-- **W / up arrow:** jump from the floor; hold to fly while Gravity Wings are equipped
+- **W / up arrow:** jump from the floor; hold to fly with Gravity Wings or the Pocket Rocket
 - **Space:** attack
 - **Q:** use the equipped ability, when present
-- **Shift:** boost the equipped vehicle, when present
+- **Shift:** boost the equipped vehicle or apply rocket thrust
 - **Mouse:** aim and choose ability targets
 - **Escape:** forfeit the round
 
 ### Mobile mode
 
-Touch and drag in the left movement zone. A large joystick appears under the thumb only while it is being used and disappears on release. Drag sideways to move or upward to fly when Gravity Wings are equipped. Use the dedicated **Jump** button to leave the floor. The large **Attack**, **Power**, and **Boost** buttons remain on the right. Power and Boost clearly show as unavailable when their optional gear slots are empty. Vine Weaver asks for a start and destination tap; nearby environment anchors act as snap points. Phase Blink asks for a destination tap.
+Touch and drag in the left movement zone. A large joystick appears under the thumb only while it is being used and disappears on release. Drag sideways to move or upward to fly when flight gear is equipped. Use the dedicated **Jump** button to leave the floor. The large **Attack**, **Power**, and **Boost** buttons remain on the right; flyable vehicles label Boost as **Thrust**. Power and Boost clearly show as unavailable when their optional gear slots are empty. Vine Weaver asks for a start and destination tap; nearby environment anchors act as snap points. Phase Blink asks for a destination tap.
 
 ### Face-to-face multiplayer
 
-Player 1 uses the large controls at the bottom of the device. Player 2 uses a second control set at the top, rotated 180 degrees so opponents can play from opposite sides of a phone or tablet. Both players receive different gear, and neither fighter is controlled by the CPU.
+Before the match, Player 2 chooses any weapon already purchased in the Garage or supplied as a starter. Player 2 may also choose any owned vehicle and ability or leave either optional slot empty. Player 1's stick fighter and controls occupy the bottom. Player 2's stick fighter stands upside down on the upper platform, and the top control set and movement directions are inverted 180 degrees for the opponent sitting across the device. Neither fighter is CPU-controlled.
+
+## Vehicles and prices
+
+- Scrap Board is the baseline ride; Trail Bike is faster; Neon Buggy is faster again and leaves stronger speed trails.
+- Pocket Rocket is a true flyable vehicle. Hold upward movement for lift and use **Boost/Thrust** for its highest speed.
+- Gear tiers are **Rough**, **Good**, **Epic**, and **Legendary**. Rough items cost at least 100 parts, Epic items at least 1,000, and Legendary items at least 1,500.
+- Vehicles carry a premium over weapons in the same tier because they combine speed, armour, boost, and—in the Rocket's case—flight.
 
 ## Player progression
 
@@ -63,7 +70,7 @@ Player 1 uses the large controls at the bottom of the device. Player 2 uses a se
 | --- | --- | --- | --- |
 | Rough | Scrap Board | Rusty Dagger | Ember Pop |
 | Good | Trail Bike | Pulse Bow | Vine Weaver |
-| Great | Neon Buggy | Arc Blaster | Phase Blink / Gravity Wings |
+| Epic | Neon Buggy | Arc Blaster | Phase Blink / Gravity Wings |
 | Legendary | Pocket Rocket | Flamethrower | Solar Inferno |
 
 The CPU has multiple visually distinct vehicles, weapons, and abilities across the tiers. Selection favours a different combat style as well as different names and silhouettes, so it never copies the player's loadout.

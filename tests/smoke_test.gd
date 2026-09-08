@@ -31,8 +31,22 @@ func _run() -> void:
 	_check(GearCatalog.rough_weapon_ids().size() >= 3, "First-login weapon pool is not randomizable")
 	_check(GearCatalog.ARENAS.size() >= 4, "Selectable background catalog is incomplete")
 	_check(GearCatalog.TIER_DROP_WEIGHTS["Rough"] > GearCatalog.TIER_DROP_WEIGHTS["Good"], "Rough drops are not more common than Good drops")
-	_check(GearCatalog.TIER_DROP_WEIGHTS["Good"] > GearCatalog.TIER_DROP_WEIGHTS["Great"], "Good drops are not more common than Great drops")
-	_check(GearCatalog.TIER_DROP_WEIGHTS["Great"] > GearCatalog.TIER_DROP_WEIGHTS["Legendary"], "Great drops are not more common than Legendary drops")
+	_check(GearCatalog.TIER_DROP_WEIGHTS["Good"] > GearCatalog.TIER_DROP_WEIGHTS["Epic"], "Good drops are not more common than Epic drops")
+	_check(GearCatalog.TIER_DROP_WEIGHTS["Epic"] > GearCatalog.TIER_DROP_WEIGHTS["Legendary"], "Epic drops are not more common than Legendary drops")
+	var tier_minimums := {"Rough": 100, "Good": 450, "Epic": 1000, "Legendary": 1500}
+	for category in ["vehicles", "weapons", "abilities", "skins"]:
+		for item_id in GearCatalog.category_data(category):
+			var item_data: Dictionary = GearCatalog.item(category, item_id)
+			_check(int(item_data["cost"]) >= int(tier_minimums[item_data["tier"]]), "%s is priced below its %s tier minimum" % [item_data["name"], item_data["tier"]])
+	for vehicle_id in GearCatalog.VEHICLES:
+		var vehicle_data: Dictionary = GearCatalog.VEHICLES[vehicle_id]
+		var matching_weapon_costs: Array[int] = []
+		for priced_weapon_id in GearCatalog.WEAPONS:
+			if GearCatalog.WEAPONS[priced_weapon_id]["tier"] == vehicle_data["tier"]:
+				matching_weapon_costs.append(int(GearCatalog.WEAPONS[priced_weapon_id]["cost"]))
+		_check(matching_weapon_costs.is_empty() or int(vehicle_data["cost"]) > matching_weapon_costs.max(), "%s does not cost more than its tier's weapons" % vehicle_data["name"])
+	_check(bool(GearCatalog.VEHICLES["rocket"]["flight"]), "Pocket Rocket is not configured as a flyable vehicle")
+	_check(float(GearCatalog.VEHICLES["buggy"]["speed"]) > float(GearCatalog.VEHICLES["bike"]["speed"]), "Neon Buggy is not faster than Trail Bike")
 	main._show_customize()
 	await process_frame
 	_check(main.screen.get_child_count() > 0, "Customization screen did not build")
@@ -78,6 +92,19 @@ func _run() -> void:
 	_check(arena.player.velocity.y < 0.0, "Gravity Wings did not enable upward flight")
 	arena.player.can_fly = false
 	arena.player.set_mobile_vector(Vector2.ZERO)
+	var rocket_tester = load("res://scenes/player.tscn").instantiate()
+	root.add_child(rocket_tester)
+	rocket_tester.configure(GearCatalog.VEHICLES["rocket"], "rocket", GearCatalog.SKINS["classic"], Color("#63e6bc"), "classic", "dagger", {})
+	rocket_tester.global_position = Vector2(360, arena.arena_art.ground_y() - 120.0)
+	rocket_tester.set_mobile_vector(Vector2.UP)
+	rocket_tester._physics_process(0.1)
+	_check(rocket_tester.vehicle_can_fly and rocket_tester.velocity.y < 0.0, "Pocket Rocket thrust did not lift the fighter")
+	rocket_tester.global_position = Vector2(360, arena.arena_art.ground_y())
+	rocket_tester.set_mobile_vector(Vector2.RIGHT)
+	_check(rocket_tester.try_boost(), "Pocket Rocket boost did not activate")
+	rocket_tester._physics_process(0.05)
+	_check(rocket_tester.velocity.x > float(GearCatalog.VEHICLES["buggy"]["speed"]), "Pocket Rocket boost did not produce a visible speed advantage")
+	rocket_tester.queue_free()
 
 	arena.cpu.global_position = arena.player.global_position + Vector2.UP * 75.0
 	arena.player.facing = Vector2.UP
@@ -137,17 +164,44 @@ func _run() -> void:
 	mobile_arena.finished = true
 
 	progress.mobile_mode = false
+	progress.unlocked = {"vehicles": ["board", "rocket"], "weapons": ["dagger", "bow"], "abilities": ["ember"], "skins": ["classic"]}
+	main._show_multiplayer_setup()
+	await process_frame
+	var setup_buttons: Array[Node] = main.screen.find_children("*", "Button", true, false)
+	_check(setup_buttons.any(func(button: Button) -> bool: return button.text.contains("PLAYER 2") or button.text.contains("START FACE-TO-FACE")), "Multiplayer did not open the Player 2 gear setup")
+	main._set_multiplayer_item("vehicles", "buggy")
+	_check(main.multiplayer_loadout["vehicles"].is_empty(), "Player 2 could select a vehicle that was not purchased")
+	main._set_multiplayer_item("weapons", "bow")
+	await process_frame
+	main._set_multiplayer_item("vehicles", "rocket")
+	await process_frame
+	main._set_multiplayer_item("abilities", "")
+	await process_frame
 	main._start_round("multiplayer")
 	await process_frame
 	var multiplayer_arena = main.screen.get_child(main.screen.get_child_count() - 1)
 	_check(multiplayer_arena.game_mode == "multiplayer", "Multiplayer mode did not start")
 	_check(multiplayer_arena.cpu.human_controlled, "Player 2 remained under CPU control")
+	_check(multiplayer_arena.cpu.weapon_id == "bow", "Player 2's chosen owned weapon was not used")
+	_check(multiplayer_arena.cpu.vehicle_id == "rocket", "Player 2's chosen owned vehicle was not used")
+	_check(multiplayer_arena.cpu.ability_id.is_empty(), "Player 2 could not leave the optional ability slot empty")
+	_check(multiplayer_arena.cpu.inverted_gravity, "Player 2 does not use upside-down gravity")
+	_check(is_equal_approx(absf(multiplayer_arena.cpu.rotation), PI), "Player 2 stick figure was not rotated upside down")
+	_check(is_equal_approx(multiplayer_arena.cpu.global_position.y, multiplayer_arena.arena_art.top_ground_y()), "Player 2 did not start on the top platform")
+	_check(multiplayer_arena.cpu.global_position.y < multiplayer_arena.get_viewport_rect().size.y * 0.5, "Player 2 spawned in the bottom half of the screen")
+	_check(multiplayer_arena._player_attack_direction().y < -0.5, "Player 1 attacks do not aim toward the top-side opponent")
 	var multiplayer_joysticks: Array[Node] = multiplayer_arena.find_children("*", "Control", true, false).filter(func(node: Node) -> bool: return node.get_script() == multiplayer_arena.JoystickScript)
 	_check(multiplayer_joysticks.size() == 2, "Multiplayer did not create two floating joysticks")
 	var multiplayer_jump_buttons: Array[Node] = multiplayer_arena.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "JUMP")
 	_check(multiplayer_jump_buttons.size() == 2, "Multiplayer did not create a JUMP button for each fighter")
 	var upside_down_controls: Array[Node] = multiplayer_arena.find_children("*", "Control", true, false).filter(func(node: Control) -> bool: return is_equal_approx(absf(node.rotation), PI))
 	_check(not upside_down_controls.is_empty(), "Player 2 controls were not rotated for face-to-face play")
+	multiplayer_arena._set_joystick_vector(Vector2(0.75, -0.5), 2)
+	_check(multiplayer_arena.cpu.mobile_vector.is_equal_approx(Vector2(-0.75, 0.5)), "Player 2 movement controls were not inverted into screen space")
+	multiplayer_arena._jump_fighter(2)
+	multiplayer_arena.cpu._physics_process(0.05)
+	_check(multiplayer_arena.cpu.velocity.y > 0.0, "Top-side Player 2 did not jump downward into the arena")
+	_check(multiplayer_arena.cpu.global_position.y > multiplayer_arena.arena_art.top_ground_y(), "Top-side Player 2 remained stuck to the upper platform")
 	multiplayer_arena.finished = true
 
 	progress.unlocked = {"vehicles": ["board"], "weapons": ["dagger"], "abilities": ["ember"], "skins": ["classic"]}
@@ -167,7 +221,7 @@ func _run() -> void:
 	progress._save_progress()
 
 	if failures.is_empty():
-		print("SMOKE TEST PASS: distinct CPU gear, redesigned arena default, grounded jumping, weighted drops, floating mobile joystick, textured combat, and face-to-face multiplayer")
+		print("SMOKE TEST PASS: tier pricing, functional vehicles, owned Player 2 loadouts, inverted top-side multiplayer, richer graphics, and grounded jumping")
 		quit(0)
 	else:
 		for failure in failures:

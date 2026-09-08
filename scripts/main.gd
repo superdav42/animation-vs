@@ -7,6 +7,7 @@ var backdrop: Control
 var screen: Control
 var garage_category := "vehicles"
 var toast: Label
+var multiplayer_loadout := {"vehicles": "", "weapons": "", "abilities": ""}
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -66,8 +67,8 @@ func _show_home() -> void:
 	var play := _menu_button("PLAY A ROUND", "fight a randomized CPU rival", true)
 	play.pressed.connect(_start_round)
 	layout.add_child(play)
-	var multiplayer := _menu_button("MULTIPLAYER", "face-to-face local duel with two control sets", true)
-	multiplayer.pressed.connect(_start_round.bind("multiplayer"))
+	var multiplayer := _menu_button("MULTIPLAYER", "choose Player 2 gear, then fight face-to-face", true)
+	multiplayer.pressed.connect(_show_multiplayer_setup)
 	layout.add_child(multiplayer)
 	var arena_data: Dictionary = GearCatalog.ARENAS[Progress.selected_arena]
 	var arenas := _menu_button("CHOOSE ARENA:  %s" % arena_data["name"].to_upper(), "pick the background before the round")
@@ -207,6 +208,64 @@ func _show_loadout() -> void:
 		for item_id in Progress.unlocked[category]:
 			content.add_child(_loadout_card(category, item_id))
 
+func _show_multiplayer_setup() -> void:
+	_ensure_multiplayer_loadout()
+	_clear_screen()
+	backdrop.show()
+	var layout := _page_layout("PLAYER 2 GEAR", "Choose from gear purchased in the Garage. Vehicle and ability are optional.")
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	layout.add_child(scroll)
+	var content := VBoxContainer.new()
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_theme_constant_override("separation", 10)
+	scroll.add_child(content)
+	for category in ["weapons", "vehicles", "abilities"]:
+		var heading := _section_heading("PLAYER 2  //  %s" % category.to_upper())
+		heading.add_theme_color_override("font_color", Color("#f07eac"))
+		content.add_child(heading)
+		if category != "weapons":
+			content.add_child(_multiplayer_gear_button(category, ""))
+		for item_id in Progress.unlocked[category]:
+			content.add_child(_multiplayer_gear_button(category, item_id))
+	var start := _menu_button("START FACE-TO-FACE MATCH", "Player 2 uses the upside-down top side", true)
+	start.pressed.connect(_start_round.bind("multiplayer"))
+	layout.add_child(start)
+
+func _ensure_multiplayer_loadout() -> void:
+	if not Progress.owns("weapons", multiplayer_loadout["weapons"]):
+		multiplayer_loadout["weapons"] = Progress.unlocked["weapons"][0]
+	for category in ["vehicles", "abilities"]:
+		if not multiplayer_loadout[category].is_empty() and not Progress.owns(category, multiplayer_loadout[category]):
+			multiplayer_loadout[category] = ""
+
+func _multiplayer_gear_button(category: String, item_id: String) -> Button:
+	var button := Button.new()
+	var active: bool = multiplayer_loadout[category] == item_id
+	if item_id.is_empty():
+		var empty_label := "ON FOOT" if category == "vehicles" else "NO ABILITY"
+		button.text = "%s  •  %s" % [empty_label, "SELECTED" if active else "TAP TO SELECT"]
+		button.add_theme_stylebox_override("normal", _box(Color(0.08, 0.08, 0.13, 0.95), Color("#805a79"), 3 if active else 1, 16))
+	else:
+		var data := GearCatalog.item(category, item_id)
+		button.text = "%s  //  %s  •  %s" % [data["name"], data["tier"].to_upper(), "SELECTED" if active else "TAP TO SELECT"]
+		button.add_theme_stylebox_override("normal", _box(Color(0.12, 0.055, 0.11, 0.95), GearCatalog.tier_color(data["tier"]), 3 if active else 1, 16))
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.custom_minimum_size.y = 66
+	button.add_theme_font_size_override("font_size", 17)
+	if not active:
+		button.pressed.connect(_set_multiplayer_item.bind(category, item_id))
+	return button
+
+func _set_multiplayer_item(category: String, item_id: String) -> void:
+	if category == "weapons" and not Progress.owns(category, item_id):
+		return
+	if category in ["vehicles", "abilities"] and not item_id.is_empty() and not Progress.owns(category, item_id):
+		return
+	multiplayer_loadout[category] = item_id
+	_show_multiplayer_setup()
+
 func _empty_loadout_card(category: String) -> Control:
 	var active: bool = Progress.equipped[category].is_empty()
 	var label := "ON FOOT" if category == "vehicles" else "NO ABILITY"
@@ -320,7 +379,7 @@ func _show_help() -> void:
 	text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	text.add_theme_font_size_override("font_size", 22)
 	text.add_theme_color_override("font_color", Color("#d5e3da"))
-	text.text = "VS RULES\nThe CPU always draws visibly different gear at your equipment tiers. Gravity pulls every fighter back to the floor after jumping. Only Gravity Wings allow sustained flight; teleports may move upward, but gravity pulls you back down. A low-chance post-round reward replaces parts with a random gear unlock, with high tiers much rarer.\n\nKEYBOARD MODE\nA / D or LEFT / RIGHT   Move sideways\nW / UP   Jump; hold to fly with Gravity Wings\nSPACE   Use weapon\nQ   Use equipped power\nSHIFT   Vehicle boost\nMOUSE   Aim and choose targets\nESC   Forfeit\n\nMOBILE MODE\nTouch and drag anywhere in the left movement zone. The large joystick appears under your thumb, then disappears on release. Use JUMP to leave the floor, or drag upward to fly when equipped. ATTACK, POWER, and BOOST remain large on the right.\n\nMULTIPLAYER\nPlayer 1 uses the bottom controls. Player 2 uses the upside-down controls at the top for face-to-face play. Both fighters have a dedicated JUMP button."
+	text.text = "VS RULES\nThe CPU always draws visibly different gear at your equipment tiers. Every vehicle changes speed, armour, and boost. The Pocket Rocket and Gravity Wings support sustained flight. Teleports may move upward, but gravity pulls you back to your platform. A low-chance post-round reward replaces parts with a random gear unlock, with high tiers much rarer.\n\nKEYBOARD MODE\nA / D or LEFT / RIGHT   Move sideways\nW / UP   Jump; hold to fly when equipped\nSPACE   Use weapon\nQ   Use equipped power\nSHIFT   Vehicle boost or rocket thrust\nMOUSE   Aim and choose targets\nESC   Forfeit\n\nMOBILE MODE\nTouch and drag anywhere in the left movement zone. The large joystick appears under your thumb, then disappears on release. Use JUMP to leave the floor, or drag upward to fly when equipped. ATTACK, POWER, BOOST, or THRUST remain large on the right.\n\nMULTIPLAYER\nChoose Player 2's weapon and optional vehicle and ability from purchased gear. Player 1 fights from the bottom. Player 2 and their controls are upside down at the top; movement is inverted for the opposite viewing direction."
 	panel.add_child(text)
 
 func _show_arenas() -> void:
@@ -447,6 +506,9 @@ func _start_round(game_mode := "cpu") -> void:
 	backdrop.hide()
 	var arena := ArenaScript.new()
 	arena.game_mode = game_mode
+	if game_mode == "multiplayer":
+		_ensure_multiplayer_loadout()
+		arena.player_two_loadout = multiplayer_loadout.duplicate(true)
 	arena.round_finished.connect(_on_round_finished)
 	screen.add_child(arena)
 

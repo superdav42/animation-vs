@@ -38,6 +38,7 @@ var vehicle_id := ""
 var weapon_data: Dictionary
 var ability_data: Dictionary
 var game_mode := "cpu"
+var player_two_loadout: Dictionary = {}
 var player_two_attack := false
 var player_horizontal := 0.0
 var player_jump := false
@@ -47,7 +48,7 @@ var player_two_jump := false
 func _ready() -> void:
 	randomize()
 	arena_art = ArenaArtScript.new()
-	arena_art.configure(Progress.selected_arena)
+	arena_art.configure(Progress.selected_arena, game_mode == "multiplayer")
 	arena_art.z_index = -10
 	add_child(arena_art)
 
@@ -56,7 +57,7 @@ func _ready() -> void:
 	vehicle_id = Progress.equipped["vehicles"]
 	weapon_data = GearCatalog.item("weapons", weapon_id)
 	ability_data = GearCatalog.item("abilities", ability_id) if not ability_id.is_empty() else {}
-	cpu_loadout = GearCatalog.build_cpu_loadout(Progress.equipped)
+	cpu_loadout = GearCatalog.resolve_player_loadout(player_two_loadout) if game_mode == "multiplayer" else GearCatalog.build_cpu_loadout(Progress.equipped)
 
 	player = PlayerScene.instantiate()
 	player.global_position = Vector2(get_viewport_rect().size.x * 0.25, arena_art.ground_y())
@@ -67,7 +68,9 @@ func _ready() -> void:
 	add_child(player)
 
 	cpu = CpuScript.new()
-	cpu.global_position = Vector2(get_viewport_rect().size.x * 0.75, arena_art.ground_y())
+	cpu.name = "PlayerTwo" if game_mode == "multiplayer" else "CPU"
+	cpu.inverted_gravity = game_mode == "multiplayer"
+	cpu.global_position = Vector2(get_viewport_rect().size.x * 0.75, arena_art.top_ground_y() if game_mode == "multiplayer" else arena_art.ground_y())
 	cpu.human_controlled = game_mode == "multiplayer"
 	cpu.health_changed.connect(_on_cpu_health_changed)
 	cpu.defeated.connect(_on_opponent_defeated)
@@ -78,6 +81,9 @@ func _ready() -> void:
 	var player_color: Color = GearCatalog.PLAYER_COLORS.get(Progress.player_color, Color("#63e6bc"))
 	player.configure(GearCatalog.item("vehicles", vehicle_id) if not vehicle_id.is_empty() else {}, vehicle_id, player_skin, player_color, Progress.player_design, weapon_id, ability_data)
 	cpu.configure(cpu_loadout, player, player_color, Progress.player_design, player_skin.get("shape", "round"))
+	if game_mode == "multiplayer":
+		player.jump_speed = 1120.0
+		cpu.jump_speed = 1120.0
 	player.facing = Vector2.RIGHT
 	cpu.facing = Vector2.LEFT
 	aim_position = cpu.global_position
@@ -151,7 +157,7 @@ func _player_attack() -> void:
 	if attack_clock > 0.0 or not is_instance_valid(cpu):
 		return
 	attack_clock = float(weapon_data.get("cooldown", 0.45))
-	var direction: Vector2 = player.facing
+	var direction := _player_attack_direction()
 	match weapon_data.get("style", "projectile"):
 		"melee":
 			var to_cpu := player.global_position.direction_to(cpu.global_position)
@@ -165,6 +171,11 @@ func _player_attack() -> void:
 			_spawn_flame(player.global_position, direction, false)
 		_:
 			_spawn_projectile(player.global_position, direction, weapon_data, weapon_id, "player")
+
+func _player_attack_direction() -> Vector2:
+	if game_mode == "multiplayer" and is_instance_valid(cpu):
+		return player.global_position.direction_to(cpu.global_position)
+	return player.facing
 
 func _activate_player_ability() -> void:
 	if ability_id.is_empty() or ability_clock > 0.0 or target_stage > 0:
@@ -316,7 +327,8 @@ func _build_hud() -> void:
 	var top_panel := PanelContainer.new()
 	top_panel.position = Vector2(22, 490 if game_mode == "multiplayer" else 20)
 	top_panel.size = Vector2(get_viewport_rect().size.x - 44, 92)
-	top_panel.add_theme_stylebox_override("panel", _box(Color(0.025, 0.08, 0.11, 0.95), Color("#654c76"), 2, 22))
+	var panel_fill := Color(0.025, 0.08, 0.11, 0.38) if game_mode == "multiplayer" else Color(0.025, 0.08, 0.11, 0.95)
+	top_panel.add_theme_stylebox_override("panel", _box(panel_fill, Color(0.4, 0.3, 0.47, 0.8), 2, 22))
 	root.add_child(top_panel)
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 12)
@@ -363,15 +375,17 @@ func _build_hud() -> void:
 		_build_touch_controls(root)
 
 func _build_touch_controls(root: Control) -> void:
-	_build_control_set(root, 1, ability_id, vehicle_id, ability_data.get("style", ""))
+	var player_vehicle_data: Dictionary = GearCatalog.item("vehicles", vehicle_id) if not vehicle_id.is_empty() else {}
+	_build_control_set(root, 1, ability_id, vehicle_id, ability_data.get("style", ""), bool(player_vehicle_data.get("flight", false)))
 	if game_mode == "multiplayer":
 		var top_controls := Control.new()
+		top_controls.name = "PlayerTwoControls"
 		top_controls.position = get_viewport_rect().size
 		top_controls.rotation = PI
 		root.add_child(top_controls)
-		_build_control_set(top_controls, 2, cpu.ability_id, cpu.vehicle_id, cpu.ability_data.get("style", ""))
+		_build_control_set(top_controls, 2, cpu.ability_id, cpu.vehicle_id, cpu.ability_data.get("style", ""), cpu.vehicle_can_fly)
 
-func _build_control_set(host: Control, player_number: int, equipped_ability: String, equipped_vehicle: String, ability_style: String) -> void:
+func _build_control_set(host: Control, player_number: int, equipped_ability: String, equipped_vehicle: String, ability_style: String, vehicle_flight: bool) -> void:
 	var size := get_viewport_rect().size
 	var joystick := JoystickScript.new()
 	joystick.position = Vector2(0, size.y - 205)
@@ -387,7 +401,8 @@ func _build_control_set(host: Control, player_number: int, equipped_ability: Str
 	move_hint.add_theme_color_override("font_color", Color(0.72, 0.86, 0.82, 0.72))
 	host.add_child(move_hint)
 	var jump := _touch_button("JUMP", Vector2(292, size.y - 122), Vector2(94, 104))
-	var boost := _touch_button("BOOST" if not equipped_vehicle.is_empty() else "ON FOOT", Vector2(392, size.y - 112), Vector2(94, 94))
+	var boost_label := "THRUST" if vehicle_flight else ("BOOST" if not equipped_vehicle.is_empty() else "ON FOOT")
+	var boost := _touch_button(boost_label, Vector2(392, size.y - 112), Vector2(94, 94))
 	var power_text := "FLY\nUSE STICK" if ability_style == "flight" else ("POWER" if not equipped_ability.is_empty() else "NO POWER")
 	var power := _touch_button(power_text, Vector2(492, size.y - 122), Vector2(94, 104))
 	var attack := _touch_button("ATTACK", Vector2(592, size.y - 142), Vector2(118, 124))
@@ -424,7 +439,7 @@ func _set_joystick_vector(value: Vector2, player_number: int) -> void:
 	if player_number == 1:
 		player.set_mobile_vector(value)
 	else:
-		cpu.set_mobile_vector(value)
+		cpu.set_mobile_vector(-value)
 
 func _set_touch_direction(player_number: int, horizontal: float, jump_control: bool, pressed: bool) -> void:
 	if player_number == 1:
@@ -464,7 +479,8 @@ func _update_hud() -> void:
 	hud_cpu.text = "%s\n%s" % ["PLAYER 2" if game_mode == "multiplayer" else "CPU", cpu.weapon_data["name"]]
 	var ability_name: String = ability_data.get("name", "NO ABILITY")
 	var ability_status: String = "—" if ability_id.is_empty() else ("HOLD UP" if ability_data.get("style", "") == "flight" else ("READY" if ability_clock <= 0.0 else "%.1fs" % ability_clock))
-	hud_power.text = "%s  •  ATTACK     |     %s  •  %s" % [weapon_data["name"], ability_name, ability_status]
+	var vehicle_name: String = GearCatalog.item("vehicles", vehicle_id).get("name", "ON FOOT") if not vehicle_id.is_empty() else "ON FOOT"
+	hud_power.text = "%s  •  %s     |     %s  •  %s" % [weapon_data["name"], vehicle_name, ability_name, ability_status]
 
 func _cpu_intro_text() -> String:
 	var opponent := "PLAYER 2" if game_mode == "multiplayer" else "CPU"
@@ -492,19 +508,28 @@ func _health_bar(position: Vector2, size: Vector2, color: Color) -> ProgressBar:
 	bar.position = position
 	bar.size = size
 	bar.show_percentage = false
-	bar.add_theme_stylebox_override("background", _box(Color("#15232d"), Color.TRANSPARENT, 0, 8))
-	bar.add_theme_stylebox_override("fill", _box(color, Color.TRANSPARENT, 0, 8))
+	bar.add_theme_stylebox_override("background", _box(Color(0.08, 0.14, 0.18, 0.58), Color.TRANSPARENT, 0, 8))
+	bar.add_theme_stylebox_override("fill", _box(Color(color, 0.88), Color.TRANSPARENT, 0, 8))
 	return bar
 
 func _spawn_slash(origin: Vector2, direction: Vector2, color: Color) -> void:
+	var points := PackedVector2Array([origin + direction.rotated(-0.65) * 62.0, origin + direction * 95.0, origin + direction.rotated(0.65) * 62.0])
+	var glow := Line2D.new()
+	glow.width = 28.0
+	glow.default_color = Color(color, 0.2)
+	glow.points = points
+	add_child(glow)
 	var line := Line2D.new()
-	line.width = 12.0
+	line.width = 10.0
 	line.default_color = color
-	line.points = PackedVector2Array([origin + direction.rotated(-0.65) * 62.0, origin + direction * 95.0, origin + direction.rotated(0.65) * 62.0])
+	line.points = points
 	add_child(line)
 	var tween := create_tween()
 	tween.tween_property(line, "modulate:a", 0.0, 0.18)
 	tween.tween_callback(line.queue_free)
+	var glow_tween := create_tween()
+	glow_tween.tween_property(glow, "modulate:a", 0.0, 0.22)
+	glow_tween.tween_callback(glow.queue_free)
 
 func _spawn_flame(origin: Vector2, direction: Vector2, cpu_flame: bool) -> void:
 	for i in range(5):

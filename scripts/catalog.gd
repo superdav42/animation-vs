@@ -4,14 +4,14 @@ extends RefCounted
 const TIER_COLORS := {
 	"Rough": Color("#99a9ad"),
 	"Good": Color("#62d6a4"),
-	"Great": Color("#64a8ff"),
+	"Epic": Color("#64a8ff"),
 	"Legendary": Color("#ffb347"),
 }
 
 const TIER_DROP_WEIGHTS := {
 	"Rough": 60.0,
 	"Good": 25.0,
-	"Great": 10.0,
+	"Epic": 10.0,
 	"Legendary": 3.0,
 }
 
@@ -23,35 +23,35 @@ const ARENAS := {
 }
 
 const VEHICLES := {
-	"board": {"name": "Scrap Board", "tier": "Rough", "cost": 0, "speed": 360.0, "armor": 0, "boost": 1.35, "texture": "rivets", "icon": "BOARD", "description": "Light, nimble, and held together with hope."},
-	"bike": {"name": "Trail Bike", "tier": "Good", "cost": 140, "speed": 410.0, "armor": 10, "boost": 1.45, "texture": "trail", "icon": "BIKE", "description": "Quick turns and a little extra protection."},
-	"buggy": {"name": "Neon Buggy", "tier": "Great", "cost": 360, "speed": 450.0, "armor": 25, "boost": 1.55, "texture": "grid", "icon": "BUGGY", "description": "Fast, sturdy, and impossible to miss."},
-	"rocket": {"name": "Pocket Rocket", "tier": "Legendary", "cost": 850, "speed": 510.0, "armor": 40, "boost": 1.75, "texture": "flame", "icon": "ROCKET", "description": "A grounded rocket sled with enormous acceleration."},
+	"board": {"name": "Scrap Board", "tier": "Rough", "cost": 200, "speed": 360.0, "armor": 0, "boost": 1.35, "texture": "rivets", "icon": "BOARD", "description": "A nimble starter ride with a short speed boost."},
+	"bike": {"name": "Trail Bike", "tier": "Good", "cost": 700, "speed": 430.0, "armor": 10, "boost": 1.5, "texture": "trail", "icon": "BIKE", "description": "Faster travel, quick boosts, and extra protection."},
+	"buggy": {"name": "Neon Buggy", "tier": "Epic", "cost": 1400, "speed": 500.0, "armor": 25, "boost": 1.65, "texture": "grid", "icon": "BUGGY", "description": "A clearly faster ride with bright boost trails and sturdy armour."},
+	"rocket": {"name": "Pocket Rocket", "tier": "Legendary", "cost": 2200, "speed": 550.0, "armor": 40, "boost": 1.8, "flight": true, "texture": "flame", "icon": "ROCKET", "description": "A flyable rocket ship with sustained thrust and enormous acceleration."},
 }
 
 const WEAPONS := {
-	"dagger": {"name": "Rusty Dagger", "tier": "Rough", "cost": 0, "damage": 22.0, "cooldown": 0.48, "range": 105.0, "style": "melee", "texture": "rust", "icon": "DAGGER", "description": "A short-range slash. Reliable in a pinch."},
-	"bat": {"name": "Battered Bat", "tier": "Rough", "cost": 35, "damage": 24.0, "cooldown": 0.58, "range": 118.0, "style": "melee", "texture": "tape", "icon": "BAT", "description": "A dented practice bat with a heavy swing."},
-	"popgun": {"name": "Tin Popgun", "tier": "Rough", "cost": 40, "damage": 16.0, "cooldown": 0.7, "range": 540.0, "style": "projectile", "texture": "rivets", "icon": "POPGUN", "description": "A noisy starter blaster made from spare parts."},
-	"bow": {"name": "Pulse Bow", "tier": "Good", "cost": 120, "damage": 28.0, "cooldown": 0.55, "range": 700.0, "style": "projectile", "texture": "pulse", "icon": "BOW", "description": "Launches quick bolts through the arena."},
-	"blaster": {"name": "Arc Blaster", "tier": "Great", "cost": 330, "damage": 38.0, "cooldown": 0.34, "range": 800.0, "style": "projectile", "pierce": 2, "texture": "circuit", "icon": "BLASTER", "description": "Rapid electric shots that pierce two foes."},
-	"flame": {"name": "Flamethrower", "tier": "Legendary", "cost": 780, "damage": 48.0, "cooldown": 0.28, "range": 235.0, "style": "flame", "texture": "heat", "icon": "FLAME", "description": "A wide cone of glorious, dangerous fire."},
+	"dagger": {"name": "Rusty Dagger", "tier": "Rough", "cost": 100, "damage": 22.0, "cooldown": 0.48, "range": 105.0, "style": "melee", "texture": "rust", "icon": "DAGGER", "description": "A short-range slash. Reliable in a pinch."},
+	"bat": {"name": "Battered Bat", "tier": "Rough", "cost": 125, "damage": 24.0, "cooldown": 0.58, "range": 118.0, "style": "melee", "texture": "tape", "icon": "BAT", "description": "A dented practice bat with a heavy swing."},
+	"popgun": {"name": "Tin Popgun", "tier": "Rough", "cost": 150, "damage": 16.0, "cooldown": 0.7, "range": 540.0, "style": "projectile", "texture": "rivets", "icon": "POPGUN", "description": "A noisy starter blaster made from spare parts."},
+	"bow": {"name": "Pulse Bow", "tier": "Good", "cost": 500, "damage": 28.0, "cooldown": 0.55, "range": 700.0, "style": "projectile", "texture": "pulse", "icon": "BOW", "description": "Launches quick bolts through the arena."},
+	"blaster": {"name": "Arc Blaster", "tier": "Epic", "cost": 1000, "damage": 38.0, "cooldown": 0.34, "range": 800.0, "style": "projectile", "pierce": 2, "texture": "circuit", "icon": "BLASTER", "description": "Rapid electric shots that pierce two foes."},
+	"flame": {"name": "Flamethrower", "tier": "Legendary", "cost": 1500, "damage": 48.0, "cooldown": 0.28, "range": 235.0, "style": "flame", "texture": "heat", "icon": "FLAME", "description": "A wide cone of glorious, dangerous fire."},
 }
 
 const ABILITIES := {
-	"ember": {"name": "Ember Pop", "tier": "Rough", "cost": 0, "cooldown": 5.0, "style": "burst", "icon": "EMBER", "description": "A hot shockwave that clears nearby enemies."},
-	"vine": {"name": "Vine Weaver", "tier": "Good", "cost": 170, "cooldown": 7.0, "style": "vine", "icon": "VINE", "description": "Choose two points. A damaging vine grows between them."},
-	"blink": {"name": "Phase Blink", "tier": "Great", "cost": 310, "cooldown": 4.0, "style": "blink", "icon": "BLINK", "description": "Teleport safely to the chosen point."},
-	"flight": {"name": "Gravity Wings", "tier": "Great", "cost": 390, "cooldown": 0.0, "style": "flight", "icon": "WINGS", "description": "Hold jump in the air to fly; release it and gravity takes over."},
-	"inferno": {"name": "Solar Inferno", "tier": "Legendary", "cost": 720, "cooldown": 9.0, "style": "inferno", "icon": "INFERNO", "description": "Ignite almost everything visible at once."},
+	"ember": {"name": "Ember Pop", "tier": "Rough", "cost": 100, "cooldown": 5.0, "style": "burst", "icon": "EMBER", "description": "A hot shockwave that clears nearby enemies."},
+	"vine": {"name": "Vine Weaver", "tier": "Good", "cost": 550, "cooldown": 7.0, "style": "vine", "icon": "VINE", "description": "Choose two points. A damaging vine grows between them."},
+	"blink": {"name": "Phase Blink", "tier": "Epic", "cost": 1050, "cooldown": 4.0, "style": "blink", "icon": "BLINK", "description": "Teleport safely to the chosen point."},
+	"flight": {"name": "Gravity Wings", "tier": "Epic", "cost": 1200, "cooldown": 0.0, "style": "flight", "icon": "WINGS", "description": "Hold jump in the air to fly; release it and gravity takes over."},
+	"inferno": {"name": "Solar Inferno", "tier": "Legendary", "cost": 1600, "cooldown": 9.0, "style": "inferno", "icon": "INFERNO", "description": "Ignite almost everything visible at once."},
 }
 
 const SKINS := {
-	"classic": {"name": "Classic Lines", "tier": "Rough", "cost": 0, "icon": "CLASSIC", "shape": "round", "description": "The clean original stick-fighter silhouette."},
-	"street": {"name": "Street Runner", "tier": "Good", "cost": 110, "icon": "STREET", "shape": "cap", "description": "A backwards cap and quick-motion streaks."},
-	"ninja": {"name": "Shadow Ninja", "tier": "Great", "cost": 280, "icon": "NINJA", "shape": "hood", "description": "A sharp hood, face wrap, and trailing scarf."},
-	"robot": {"name": "Frame Bot", "tier": "Great", "cost": 360, "icon": "ROBOT", "shape": "square", "description": "A square head and segmented mechanical limbs."},
-	"cosmic": {"name": "Cosmic Orbit", "tier": "Legendary", "cost": 760, "icon": "COSMIC", "shape": "orbit", "description": "A star-bright head with a tiny orbiting moon."},
+	"classic": {"name": "Classic Lines", "tier": "Rough", "cost": 100, "icon": "CLASSIC", "shape": "round", "description": "The clean original stick-fighter silhouette."},
+	"street": {"name": "Street Runner", "tier": "Good", "cost": 450, "icon": "STREET", "shape": "cap", "description": "A backwards cap and quick-motion streaks."},
+	"ninja": {"name": "Shadow Ninja", "tier": "Epic", "cost": 1000, "icon": "NINJA", "shape": "hood", "description": "A sharp hood, face wrap, and trailing scarf."},
+	"robot": {"name": "Frame Bot", "tier": "Epic", "cost": 1150, "icon": "ROBOT", "shape": "square", "description": "A square head and segmented mechanical limbs."},
+	"cosmic": {"name": "Cosmic Orbit", "tier": "Legendary", "cost": 1500, "icon": "COSMIC", "shape": "orbit", "description": "A star-bright head with a tiny orbiting moon."},
 }
 
 const PLAYER_COLORS := {
@@ -74,10 +74,10 @@ const CPU_VEHICLES := {
 	"spring_cart": {"name": "Spring Cart", "tier": "Rough", "speed": 340.0, "armor": 4, "boost": 1.36, "texture": "springs"},
 	"hoverbike": {"name": "CPU Hoverbike", "tier": "Good", "speed": 400.0, "armor": 10, "boost": 1.42, "texture": "vents"},
 	"tread_cycle": {"name": "Tread Cycle", "tier": "Good", "speed": 390.0, "armor": 14, "boost": 1.4, "texture": "treads"},
-	"mech": {"name": "CPU Walker", "tier": "Great", "speed": 430.0, "armor": 25, "boost": 1.5, "texture": "hazard"},
-	"crab_tank": {"name": "Crab Tank", "tier": "Great", "speed": 420.0, "armor": 30, "boost": 1.46, "texture": "armor"},
-	"saucer": {"name": "CPU Saucer", "tier": "Legendary", "speed": 485.0, "armor": 40, "boost": 1.65, "texture": "stars"},
-	"meteor_pod": {"name": "Meteor Pod", "tier": "Legendary", "speed": 470.0, "armor": 46, "boost": 1.62, "texture": "cracked"},
+	"mech": {"name": "CPU Walker", "tier": "Epic", "speed": 470.0, "armor": 25, "boost": 1.55, "texture": "hazard"},
+	"crab_tank": {"name": "Crab Tank", "tier": "Epic", "speed": 455.0, "armor": 30, "boost": 1.5, "texture": "armor"},
+	"saucer": {"name": "CPU Saucer", "tier": "Legendary", "speed": 525.0, "armor": 40, "boost": 1.72, "flight": true, "texture": "stars"},
+	"meteor_pod": {"name": "Meteor Pod", "tier": "Legendary", "speed": 510.0, "armor": 46, "boost": 1.68, "flight": true, "texture": "cracked"},
 }
 
 const CPU_WEAPONS := {
@@ -85,9 +85,9 @@ const CPU_WEAPONS := {
 	"pebbler": {"name": "Pebble Slinger", "tier": "Rough", "damage": 15.0, "cooldown": 0.72, "range": 520.0, "style": "projectile"},
 	"disc": {"name": "Disc Launcher", "tier": "Good", "damage": 24.0, "cooldown": 0.68, "range": 680.0, "style": "projectile"},
 	"spear": {"name": "Volt Spear", "tier": "Good", "damage": 27.0, "cooldown": 0.72, "range": 138.0, "style": "melee"},
-	"rail": {"name": "Mini Railgun", "tier": "Great", "damage": 32.0, "cooldown": 0.58, "range": 820.0, "style": "projectile", "pierce": 2},
-	"shock_hammer": {"name": "Shock Hammer", "tier": "Great", "damage": 35.0, "cooldown": 0.7, "range": 128.0, "style": "melee"},
-	"drone": {"name": "Drone Cannon", "tier": "Great", "damage": 27.0, "cooldown": 0.42, "range": 760.0, "style": "projectile"},
+	"rail": {"name": "Mini Railgun", "tier": "Epic", "damage": 32.0, "cooldown": 0.58, "range": 820.0, "style": "projectile", "pierce": 2},
+	"shock_hammer": {"name": "Shock Hammer", "tier": "Epic", "damage": 35.0, "cooldown": 0.7, "range": 128.0, "style": "melee"},
+	"drone": {"name": "Drone Cannon", "tier": "Epic", "damage": 27.0, "cooldown": 0.42, "range": 760.0, "style": "projectile"},
 	"star_lance": {"name": "Star Lance", "tier": "Legendary", "damage": 42.0, "cooldown": 0.45, "range": 175.0, "style": "melee"},
 	"plasma": {"name": "Plasma Sprayer", "tier": "Legendary", "damage": 38.0, "cooldown": 0.4, "range": 250.0, "style": "flame"},
 }
@@ -97,8 +97,8 @@ const CPU_ABILITIES := {
 	"skip_step": {"name": "Skip Step", "tier": "Rough", "cooldown": 7.0, "style": "blink"},
 	"root_trap": {"name": "Root Trap", "tier": "Good", "cooldown": 8.0, "style": "vine"},
 	"gust_pack": {"name": "Gust Pack", "tier": "Good", "cooldown": 0.0, "style": "flight"},
-	"phase_step": {"name": "Phase Step", "tier": "Great", "cooldown": 5.0, "style": "blink"},
-	"gravity_well": {"name": "Gravity Well", "tier": "Great", "cooldown": 7.0, "style": "burst"},
+	"phase_step": {"name": "Phase Step", "tier": "Epic", "cooldown": 5.0, "style": "blink"},
+	"gravity_well": {"name": "Gravity Well", "tier": "Epic", "cooldown": 7.0, "style": "burst"},
 	"void_storm": {"name": "Void Storm", "tier": "Legendary", "cooldown": 10.0, "style": "inferno"},
 	"star_wings": {"name": "Star Wings", "tier": "Legendary", "cooldown": 0.0, "style": "flight"},
 }
@@ -113,6 +113,25 @@ static func category_data(category: String) -> Dictionary:
 
 static func item(category: String, item_id: String) -> Dictionary:
 	return category_data(category).get(item_id, {})
+
+static func resolve_player_loadout(selection: Dictionary) -> Dictionary:
+	var weapon_id: String = selection.get("weapons", "dagger")
+	if weapon_id not in WEAPONS:
+		weapon_id = "dagger"
+	var vehicle_id: String = selection.get("vehicles", "")
+	if vehicle_id not in VEHICLES:
+		vehicle_id = ""
+	var ability_id: String = selection.get("abilities", "")
+	if ability_id not in ABILITIES:
+		ability_id = ""
+	return {
+		"weapons": weapon_id,
+		"weapon_data": WEAPONS[weapon_id],
+		"vehicles": vehicle_id,
+		"vehicle_data": VEHICLES.get(vehicle_id, {}),
+		"abilities": ability_id,
+		"ability_data": ABILITIES.get(ability_id, {}),
+	}
 
 static func tier_color(tier: String) -> Color:
 	return TIER_COLORS.get(tier, Color.WHITE)

@@ -3,13 +3,18 @@ extends Node2D
 var elapsed := 0.0
 var branch_anchors: Array[Vector2] = []
 var arena_id := "neon_forest"
+var face_to_face := false
 
-func configure(selected_arena: String) -> void:
+func configure(selected_arena: String, multiplayer := false) -> void:
 	arena_id = selected_arena if selected_arena in GearCatalog.ARENAS else "neon_forest"
+	face_to_face = multiplayer
 	queue_redraw()
 
 func ground_y() -> float:
 	return get_viewport_rect().size.y - 245.0
+
+func top_ground_y() -> float:
+	return 245.0
 
 func _ready() -> void:
 	var size := get_viewport_rect().size
@@ -40,6 +45,9 @@ func _draw() -> void:
 		"ember_foundry": _draw_ember_foundry(size)
 		"crystal_cavern": _draw_crystal_cavern(size)
 		_: _draw_neon_forest(size)
+	if face_to_face:
+		_draw_upper_platform(size)
+	_draw_light_frame(size)
 
 func _draw_neon_forest(size: Vector2) -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color("#081922"))
@@ -56,8 +64,13 @@ func _draw_moon_dojo(size: Vector2) -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color("#101629"))
 	for band in range(7):
 		draw_rect(Rect2(0, band * ground_y() / 7.0, size.x, ground_y() / 7.0 + 2.0), Color(0.07 + band * 0.008, 0.09 + band * 0.008, 0.16 + band * 0.012))
+	for glow_radius in [172.0, 154.0, 138.0]:
+		draw_circle(Vector2(size.x * 0.72, 350), glow_radius, Color(1.0, 0.83, 0.42, 0.018 + (172.0 - glow_radius) * 0.0015))
 	draw_circle(Vector2(size.x * 0.72, 350), 126.0, Color("#f8e8b0"))
 	draw_circle(Vector2(size.x * 0.68, 325), 126.0, Color("#101629"))
+	for i in range(24):
+		var star := Vector2(fposmod(i * 97.0, size.x), 205.0 + fposmod(i * 61.0, 430.0))
+		draw_circle(star, 1.5 + i % 2, Color(1.0, 0.9, 0.6, 0.32 + sin(elapsed * 1.4 + i) * 0.12))
 	for layer in range(3):
 		var base_y := 610.0 + layer * 80.0
 		var mountain := PackedVector2Array([Vector2(0, base_y), Vector2(130, base_y - 130 + layer * 20), Vector2(250, base_y - 35), Vector2(390, base_y - 180 + layer * 25), Vector2(550, base_y - 55), Vector2(size.x, base_y - 145), Vector2(size.x, ground_y()), Vector2(0, ground_y())])
@@ -66,6 +79,7 @@ func _draw_moon_dojo(size: Vector2) -> void:
 	_draw_torii(Vector2(size.x - 92, ground_y() - 280), 0.55)
 	for x in [150.0, size.x - 150.0]:
 		draw_line(Vector2(x, ground_y() - 170), Vector2(x, ground_y() - 40), Color("#553a35"), 9.0)
+		for glow_radius in [38.0, 31.0]: draw_circle(Vector2(x, ground_y() - 180), glow_radius, Color(1.0, 0.46, 0.16, 0.035))
 		draw_circle(Vector2(x, ground_y() - 180), 24.0, Color(1.0, 0.58, 0.25, 0.22))
 		draw_rect(Rect2(x - 13, ground_y() - 195, 26, 30), Color("#e88748"), true)
 	_draw_floor(size, Color("#332c36"), Color("#dfb86b"), "planks")
@@ -124,6 +138,25 @@ func _draw_floor(size: Vector2, base: Color, accent: Color, texture_style: Strin
 				draw_circle(Vector2(x + 10, floor_top + 38 + (i % 3) * 44), 4.0, Color(accent, 0.45))
 			"facets": draw_line(Vector2(x, floor_top), Vector2(x + 45.0 * (-1.0 if i % 2 == 0 else 1.0), size.y), Color(accent, 0.2), 2.0)
 			_: draw_line(Vector2(x, floor_top), Vector2(x - 45 + sin(float(i)) * 25, size.y), Color(accent, 0.16), 3.0)
+	for i in range(10):
+		var glint_x := fposmod(i * 113.0 + elapsed * 7.0, size.x)
+		draw_line(Vector2(glint_x, floor_top + 12 + (i % 4) * 34), Vector2(glint_x + 18, floor_top + 12 + (i % 4) * 34), Color(accent, 0.2), 2.0)
+
+func _draw_upper_platform(size: Vector2) -> void:
+	var accent: Color = GearCatalog.ARENAS[arena_id]["accent"]
+	draw_rect(Rect2(0, 0, size.x, top_ground_y()), Color(0.025, 0.045, 0.075, 0.9), true)
+	draw_line(Vector2(0, top_ground_y()), Vector2(size.x, top_ground_y()), accent, 8.0)
+	for i in range(11):
+		var x := i * size.x / 10.0
+		draw_line(Vector2(x, 0), Vector2(x + (x - size.x * 0.5) * 0.16, top_ground_y()), Color(accent, 0.16), 2.0)
+	for i in range(7):
+		var marker_x := 36.0 + i * 108.0
+		draw_colored_polygon(PackedVector2Array([Vector2(marker_x - 12, top_ground_y() - 5), Vector2(marker_x, top_ground_y() - 20), Vector2(marker_x + 12, top_ground_y() - 5)]), Color(accent, 0.5))
+
+func _draw_light_frame(size: Vector2) -> void:
+	var accent: Color = GearCatalog.ARENAS[arena_id]["accent"]
+	draw_line(Vector2(8, 255), Vector2(8, ground_y() - 12), Color(accent, 0.13), 3.0)
+	draw_line(Vector2(size.x - 8, 255), Vector2(size.x - 8, ground_y() - 12), Color(accent, 0.13), 3.0)
 
 func _draw_torii(position: Vector2, scale_factor: float) -> void:
 	draw_line(position + Vector2(-55, 0) * scale_factor, position + Vector2(-55, 250) * scale_factor, Color("#753e3d"), 22.0 * scale_factor)

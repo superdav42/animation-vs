@@ -23,11 +23,12 @@ var walk_phase := 0.0
 var weapon_id := "dagger"
 var ability_style := ""
 var can_fly := false
+var vehicle_can_fly := false
 var ground_level := 1035.0
 var jump_requested := false
+var jump_speed := 690.0
 
 const GRAVITY := 1900.0
-const JUMP_SPEED := -690.0
 const FLIGHT_THRUST := 1550.0
 const CEILING_Y := 285.0
 
@@ -35,7 +36,8 @@ func configure(data: Dictionary, equipped_vehicle: String, skin_data := {}, figh
 	vehicle_id = equipped_vehicle
 	weapon_id = equipped_weapon
 	ability_style = equipped_ability.get("style", "")
-	can_fly = ability_style == "flight"
+	vehicle_can_fly = bool(data.get("flight", false))
+	can_fly = ability_style == "flight" or vehicle_can_fly
 	body_color = fighter_color
 	skin_shape = skin_data.get("shape", "round")
 	design = fighter_design
@@ -73,7 +75,7 @@ func _physics_process(delta: float) -> void:
 		speed *= slow_multiplier
 	velocity.x = horizontal * speed
 	if grounded and (jump_requested or keyboard_jump):
-		velocity.y = JUMP_SPEED
+		velocity.y = -jump_speed
 	elif can_fly and wants_flight and global_position.y > CEILING_Y:
 		velocity.y = move_toward(velocity.y, -520.0, FLIGHT_THRUST * delta)
 	else:
@@ -137,6 +139,11 @@ func _draw() -> void:
 		"rocket": vehicle_color = Color("#ffad47")
 	var direction := facing
 	var stride := sin(walk_phase) * (8.0 if velocity.length_squared() > 10.0 else 1.5)
+	draw_line(Vector2(-31, 46), Vector2(31, 46), Color(0.01, 0.035, 0.05, 0.48), 12.0, true)
+	if absf(velocity.x) > 405.0:
+		var trail_side := -signf(velocity.x)
+		for i in range(3):
+			draw_line(Vector2(trail_side * (36 + i * 12), 5 + i * 12), Vector2(trail_side * (70 + i * 16), 5 + i * 12), Color(vehicle_color, 0.42 - i * 0.1), 5.0 - i)
 	match vehicle_id:
 		"board":
 			draw_line(Vector2(-25, 23), Vector2(25, 23), vehicle_color, 12.0, true)
@@ -150,18 +157,32 @@ func _draw() -> void:
 			draw_line(Vector2(7, 4), Vector2(23, 24), vehicle_color, 6.0, true)
 			draw_line(Vector2(-8, 14), Vector2(15, 14), Color("#d8ff9a"), 3.0)
 		"buggy":
-			draw_rect(Rect2(-32, 4, 64, 36), vehicle_color, true)
+			draw_colored_polygon(PackedVector2Array([Vector2(-38, 36), Vector2(-30, 2), Vector2(16, -3), Vector2(37, 15), Vector2(34, 38)]), vehicle_color)
+			draw_polyline(PackedVector2Array([Vector2(-38, 36), Vector2(-30, 2), Vector2(16, -3), Vector2(37, 15)]), Color("#b9e7ff"), 4.0)
 			for x in range(-26, 28, 13): draw_line(Vector2(x, 7), Vector2(x + 12, 36), Color(0.05, 0.2, 0.35, 0.55), 3.0)
-			draw_circle(Vector2(-25, 40), 9.0, Color("#09141e"))
-			draw_circle(Vector2(25, 40), 9.0, Color("#09141e"))
+			for wheel_x in [-25.0, 25.0]:
+				draw_circle(Vector2(wheel_x, 40), 11.0, Color("#09141e"))
+				draw_circle(Vector2(wheel_x, 40), 5.0, Color("#75f2ff"), false, 3.0)
 		"rocket":
-			draw_colored_polygon(PackedVector2Array([Vector2(-36, 22), Vector2(-15, 0), Vector2(32, 7), Vector2(38, 27), Vector2(-30, 30)]), vehicle_color)
-			draw_line(Vector2(-19, 7), Vector2(28, 14), Color("#fff0a1"), 5.0)
-			draw_colored_polygon(PackedVector2Array([Vector2(-34, 12), Vector2(-55 - sin(Time.get_ticks_msec() * 0.02) * 5, 23), Vector2(-32, 27)]), Color("#ff5d5d"))
-			draw_circle(Vector2(-24, 34), 8.0, Color("#09141e"))
-			draw_circle(Vector2(25, 34), 8.0, Color("#09141e"))
+			var flame_length := 22.0 + absf(sin(Time.get_ticks_msec() * 0.018)) * 18.0 + (16.0 if boost_time > 0.0 else 0.0)
+			for nozzle_x in [-18.0, 18.0]:
+				draw_colored_polygon(PackedVector2Array([Vector2(nozzle_x - 8, 29), Vector2(nozzle_x, 38 + flame_length), Vector2(nozzle_x + 8, 29)]), Color("#ff623d"))
+				draw_colored_polygon(PackedVector2Array([Vector2(nozzle_x - 4, 30), Vector2(nozzle_x, 32 + flame_length * 0.65), Vector2(nozzle_x + 4, 30)]), Color("#fff27a"))
+			draw_colored_polygon(PackedVector2Array([Vector2(-38, 27), Vector2(-28, 0), Vector2(0, -17), Vector2(28, 0), Vector2(38, 27), Vector2(25, 37), Vector2(-25, 37)]), vehicle_color)
+			draw_polyline(PackedVector2Array([Vector2(-38, 27), Vector2(-28, 0), Vector2(0, -17), Vector2(28, 0), Vector2(38, 27)]), Color("#fff1ad"), 4.0)
+			draw_circle(Vector2(0, 5), 10.0, Color("#17334b"))
+			draw_circle(Vector2(0, 5), 6.0, Color("#8ef4ff"))
 	_draw_ability_texture()
 	var line_color := Color(body_color, pulse)
+	var outline := Color(0.015, 0.045, 0.06, pulse)
+	draw_circle(Vector2(0, -30), 18.0, Color(body_color, 0.12))
+	draw_circle(Vector2(0, -30), 15.0, outline, false, 11.0)
+	draw_line(Vector2(0, -15), Vector2(0, 19), outline, 13.0, true)
+	draw_line(Vector2(0, -7), Vector2(-19 - stride * 0.35, 8), outline, 12.0, true)
+	var weapon_hand := Vector2(direction.x * 29.0, -4)
+	draw_line(Vector2(0, -7), weapon_hand, outline, 12.0, true)
+	draw_line(Vector2(0, 18), Vector2(-15 - stride, 40), outline, 13.0, true)
+	draw_line(Vector2(0, 18), Vector2(15 + stride, 40), outline, 13.0, true)
 	if skin_shape == "orbit":
 		draw_circle(Vector2(0, -28), 24.0, Color(body_color, 0.16), false, 5.0)
 		draw_circle(Vector2(22, -30 + sin(walk_phase) * 4.0), 5.0, Color("#ffd166"))
@@ -177,10 +198,11 @@ func _draw() -> void:
 		draw_line(Vector2(12, -22), Vector2(29, -9), line_color, 5.0, true)
 	draw_line(Vector2(0, -15), Vector2(0, 19), line_color, 7.0, true)
 	draw_line(Vector2(0, -7), Vector2(-19 - stride * 0.35, 8), line_color, 6.0, true)
-	var weapon_hand := Vector2(direction.x * 29.0, -4)
 	draw_line(Vector2(0, -7), weapon_hand, line_color, 6.0, true)
 	draw_line(Vector2(0, 18), Vector2(-15 - stride, 40), line_color, 7.0, true)
 	draw_line(Vector2(0, 18), Vector2(15 + stride, 40), line_color, 7.0, true)
+	for joint in [Vector2(0, -7), Vector2(0, 18), weapon_hand]:
+		draw_circle(joint, 4.5, Color("#f5f0d7"))
 	if design == "visor":
 		draw_line(Vector2(-10, -31), Vector2(10, -31), Color("#10232d"), 5.0, true)
 	elif design == "bolt":
